@@ -5,7 +5,7 @@ from screens import constants
 class GameScreen:
     """Handle the gameplay screen and maze rendering."""
 
-    def __init__(self, gfx, width: int =15, height: int =15, seed: int=42):
+    def __init__(self, gfx, width: int =25, height: int =25, seed: int=42):
         self.gfx = gfx
         self.maze_width = width
         self.maze_height = height
@@ -19,7 +19,7 @@ class GameScreen:
         self.offset_x = 0
         self.offset_y = 0
         self._calc_maze_dims()
-        
+
 
         # pacman vars
         self.pacman_x, self.pacman_y = self.find_spawn_position()
@@ -42,7 +42,7 @@ class GameScreen:
         # load all the assets
         self.load_assets()
         self.pacgum_width, self.pacgum_height = self.gfx.sprite_size("pacgum")
-        
+
     def _generate_maze(self):
         """Draw the maze once"""
         self.gfx.clear()
@@ -79,7 +79,7 @@ class GameScreen:
         self.pacman_sprites["down"].append("pacman_down_1")
         self.pacman_sprites["down"].append("pacman_down_2")
         self.pacman_sprites["down"].append("pacman_down_3")
-        
+
         # # left
         self.gfx.load_sprite("pacman_left_1", "../assets/pacman-art/pacman-left/left_1.png")
         self.gfx.load_sprite("pacman_left_2", "../assets/pacman-art/pacman-left/left_2.png")
@@ -87,7 +87,7 @@ class GameScreen:
         self.pacman_sprites["left"].append("pacman_left_1")
         self.pacman_sprites["left"].append("pacman_left_2")
         self.pacman_sprites["left"].append("pacman_left_3")
-        
+
         # # right
         self.gfx.load_sprite("pacman_right_1", "../assets/pacman-art/pacman-right/right_1.png")
         self.gfx.load_sprite("pacman_right_2", "../assets/pacman-art/pacman-right/right_2.png")
@@ -95,10 +95,10 @@ class GameScreen:
         self.pacman_sprites["right"].append("pacman_right_1")
         self.pacman_sprites["right"].append("pacman_right_2")
         self.pacman_sprites["right"].append("pacman_right_3")
-        
+
         # # Dots
         self.gfx.load_sprite("pacgum", "../assets/pacman-art/other/dot.png")
-        
+
         ## Ghosts
         self.gfx.load_sprite("blinky", "../assets/pacman-art/ghosts/blinky.png")
         self.gfx.load_sprite("pinky", "../assets/pacman-art/ghosts/pinky.png")
@@ -125,8 +125,8 @@ class GameScreen:
                         return x, y
 
         raise RuntimeError("Maze has no walkable cell")
-    
-    
+
+
     def create_dots(self):
         """Create a dot on every walkable cell."""
         for y in range(len(self.maze)):
@@ -180,7 +180,7 @@ class GameScreen:
             return False
 
         return True
-    
+
     def update_pacman(self):
         """Update movement"""
 
@@ -202,7 +202,7 @@ class GameScreen:
         self._draw_dots()
         self._draw_ghosts()
         self.update_pacman_animation()
-        
+
     def update_pacman_animation(self):
         """Change Pac-Man's animation frame."""
 
@@ -225,10 +225,10 @@ class GameScreen:
         cell_width = available_width // self.maze_width
         cell_height = available_height // self.maze_height
         print(f"cell width: {cell_width}, cell height: {cell_height}")
-        
+
         self.cell_size = min(cell_width, cell_height)
         print(f"cell size: {self.cell_size}")
-        
+
         maze_pixel_width = (self.maze_width * self.cell_size)
         maze_pixel_height = (self.maze_height * self.cell_size)
         print(f"maze pixel width: {maze_pixel_width}, maze pixel height: {maze_pixel_height}")
@@ -269,7 +269,7 @@ class GameScreen:
         py = (self.offset_y + self.pacman_y * self.cell_size + self.cell_size // 2)
         width, height = self.gfx.sprite_size(sprite_name)
         self.gfx.sprite(sprite_name, px - width // 2, py - height // 2)
-        
+
     def _draw_dots(self):
         """Draw all remaining dots."""
 
@@ -278,7 +278,7 @@ class GameScreen:
 
             py = ((self.offset_y + y * self.cell_size) + self.cell_size // 2)
             self.gfx.sprite("pacgum", px - self.pacgum_width // 2, py - self.pacgum_height // 2)
-    
+
     def _draw_ghosts(self):
         """Draw all ghosts."""
 
@@ -289,7 +289,7 @@ class GameScreen:
 
             width, height = self.gfx.sprite_size(sprite_name)
             self.gfx.sprite(sprite_name, px - width // 2, py - height // 2 )
-            
+
     def move_pacman(self, direction):
         """Move Pac-Man in the given direction."""
 

@@ -44,7 +44,7 @@ def on_mouse(button: int, x: int, y: int) -> None:
 def on_key(key: int) -> int:
     if key == 65307:
         gfx.stop()
-    
+
     if current_screen == "game":
         game_screen.handle_key(key)
     return 0
