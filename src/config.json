@@ -1,8 +1,22 @@
+# ============================================================
+# Pac-Man configuration
+# Lines starting with '#' are comments and are ignored.
+# Missing or invalid values fall back to their defaults.
+# ============================================================
 {
+	# Name of the file where the top 10 highscores are saved
 	"highscore_filename": "highscores.json",
+
 	"game_settings": {
+		# Time limit for each level, in seconds (1 to 3600)
 		"level_max_time": 90,
+
+		# Seed used to generate the first maze (integer >= 0)
+		# The next levels are generated randomly
 		"seed": 42,
+
+		# One entry per level, in order (at least 10 levels).
+		# width and height are the maze size (5 to 100)
 		"levels": [
 			{"width": 15, "height": 15},
 			{"width": 15, "height": 15},
@@ -18,12 +32,18 @@
 	},
 
 	"player": {
+		# Lives at the start of the game (1 to 99)
 		"lives": 3
 	},
 
 	"score": {
+		# Points for eating a pacgum (small dot)
 		"pacgum": 10,
+
+		# Points for eating a super-pacgum (power pellet)
 		"super_pacgum": 50,
+
+		# Points for eating an edible ghost
 		"ghost": 200
 	}
 }
