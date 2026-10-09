@@ -1,9 +1,8 @@
 {
 	"highscore_filename": "highscores.json",
-
 	"game_settings": {
-		"max_time": 90,
-		"first_level_seed": 42,
+		"level_max_time": 90,
+		"seed": 42,
 		"levels": [
 			{"width": 15, "height": 15},
 			{"width": 15, "height": 15},
