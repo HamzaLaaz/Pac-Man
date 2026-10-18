@@ -1,334 +1,116 @@
+from .constants import *
+from .mlx_class import MlxClass
 from mazegenerator import MazeGenerator
-from screens import constants
+from bdfparser import Font
+import time
 
 
 class GameScreen:
-    """Handle the gameplay screen and maze rendering."""
-
-    def __init__(self, gfx, width: int =15, height: int =15, seed: int=42):
-        self.gfx = gfx
-        self.maze_width = width
-        self.maze_height = height
+    def __init__(self, maze_x: int, maze_y: int, seed: int, mlx_class: MlxClass):
+        self.maze_width = maze_x
+        self.maze_height = maze_y
         self.seed = seed
+        self.mlx_class = mlx_class
+        self.mlx = mlx_class.mlx
+        self.mlx_ptr = mlx_class.mlx_ptr
+        self.mlx_win = mlx_class.win
+        self.x = 0
+        
+        # timer 
+        self.level_duration = 10
+        self.level_start_time = time.monotonic()
+        self.last_displayed_second = None
+        
+        self.game_over = False
+        
+        self.pacman_lifes = 3
+        
         self.maze_generator = MazeGenerator(size=(self.maze_width, self.maze_height), perfect=False, seed = self.seed)
-        self.maze = self.maze_generator.maze
-        print(self.maze)
-        self.maze_copy: bytes | None = None
-        # maze vars
-        self.cell_size = 0
-        self.offset_x = 0
-        self.offset_y = 0
-        self._calc_maze_dims()
+        self.maze_grid = self.maze_generator.maze
         
+        self.background = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/background.xpm")
 
-        # pacman vars
-        self.pacman_x, self.pacman_y = self.find_spawn_position()
-        self.pacman_direction = "left"
-        self.wanted_direction = "left"
-        self.pacman_frame = 0
-        self.pacman_frame_timer = 0
-        self.pacman_move_timer = 0
-        # Ghost starting positions.
-        self.ghosts = [
-            {"name": "blinky", "x": 0, "y": 0},
-            {"name": "pinky", "x": self.maze_width - 1, "y": 0},
-            {"name": "inky", "x": 0, "y": self.maze_height - 1},
-            {"name": "clyde", "x": self.maze_width - 1, "y": self.maze_height - 1}]
-
-        # Dots currently present in the maze.
-        self.dots = set()
-        self.create_dots()
-
-        # load all the assets
-        self.load_assets()
-        self.pacgum_width, self.pacgum_height = self.gfx.sprite_size("pacgum")
-        
-    def _generate_maze(self):
-        """Draw the maze once"""
-        self.gfx.clear()
-        self.draw_maze()
-        self.maze_copy = bytes(self.gfx.data)
-
-    def _copy_maze(self):
-        """cope the maze into the backbuffer"""
-        if self.maze_copy is None:
-            self._generate_maze()
-        else:
-            self.gfx.data[:len(self.maze_copy)] = self.maze_copy
-
-    def load_assets(self):
-        """Load all game sprites."""
-        # Pac-Man animation frames.
-        self.pacman_sprites = {
-            "up": [],
-            "down": [],
-            "left": [],
-            "right": []}
-        # up
-        self.gfx.load_sprite("pacman_up_1", "../assets/pacman-art/pacman-up/up_1.png")
-        self.gfx.load_sprite("pacman_up_2", "../assets/pacman-art/pacman-up/up_2.png")
-        self.gfx.load_sprite("pacman_up_3", "../assets/pacman-art/pacman-up/up_3.png")
-        self.pacman_sprites["up"].append("pacman_up_1")
-        self.pacman_sprites["up"].append("pacman_up_2")
-        self.pacman_sprites["up"].append("pacman_up_3")
-
-        # # down
-        self.gfx.load_sprite("pacman_down_1", "../assets/pacman-art/pacman-down/down_1.png")
-        self.gfx.load_sprite("pacman_down_2", "../assets/pacman-art/pacman-down/down_2.png")
-        self.gfx.load_sprite("pacman_down_3", "../assets/pacman-art/pacman-down/down_3.png")
-        self.pacman_sprites["down"].append("pacman_down_1")
-        self.pacman_sprites["down"].append("pacman_down_2")
-        self.pacman_sprites["down"].append("pacman_down_3")
-        
-        # # left
-        self.gfx.load_sprite("pacman_left_1", "../assets/pacman-art/pacman-left/left_1.png")
-        self.gfx.load_sprite("pacman_left_2", "../assets/pacman-art/pacman-left/left_2.png")
-        self.gfx.load_sprite("pacman_left_3", "../assets/pacman-art/pacman-left/left_3.png")
-        self.pacman_sprites["left"].append("pacman_left_1")
-        self.pacman_sprites["left"].append("pacman_left_2")
-        self.pacman_sprites["left"].append("pacman_left_3")
-        
-        # # right
-        self.gfx.load_sprite("pacman_right_1", "../assets/pacman-art/pacman-right/right_1.png")
-        self.gfx.load_sprite("pacman_right_2", "../assets/pacman-art/pacman-right/right_2.png")
-        self.gfx.load_sprite("pacman_right_3", "../assets/pacman-art/pacman-right/right_3.png")
-        self.pacman_sprites["right"].append("pacman_right_1")
-        self.pacman_sprites["right"].append("pacman_right_2")
-        self.pacman_sprites["right"].append("pacman_right_3")
-        
-        # # Dots
-        self.gfx.load_sprite("pacgum", "../assets/pacman-art/other/dot.png")
-        
-        ## Ghosts
-        self.gfx.load_sprite("blinky", "../assets/pacman-art/ghosts/blinky.png")
-        self.gfx.load_sprite("pinky", "../assets/pacman-art/ghosts/pinky.png")
-        self.gfx.load_sprite("inky", "../assets/pacman-art/ghosts/inky.png")
-        self.gfx.load_sprite("clyde", "../assets/pacman-art/ghosts/clyde.png")
-        self.gfx.load_sprite("blue_ghost", "../assets/pacman-art/ghosts/blue_ghost.png")
-
-    def find_spawn_position(self):
-        """Find a walkable cell close to the center."""
-        center_x = self.maze_width // 2
-        center_y = self.maze_height // 2
-
-        # Start at the center and expand outward.
-        for radius in range(max(len(self.maze), len(self.maze[0]))):
-            for y in range(
-                center_y - radius,
-                center_y + radius + 1
-            ):
-                for x in range(
-                    center_x - radius,
-                    center_x + radius + 1
-                ):
-                    if self.is_walkable(x, y):
-                        return x, y
-
-        raise RuntimeError("Maze has no walkable cell")
     
+    def draw_hearts(self):
+        img, w, h = self.mlx.mlx_png_file_to_image(self.mlx_ptr, "assets/pacman-art/other/heart.png")
+        self.x = 0
+        for i in range(self.pacman_lifes):
+            self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, self.x, 0)
+            self.x += w + 10
+        
+    def maze_getter(self):
+        return self.maze_generator
     
-    def create_dots(self):
-        """Create a dot on every walkable cell."""
-        for y in range(len(self.maze)):
-            for x in range(len(self.maze[y])):
-                if self.is_walkable(x, y):
-                    self.dots.add((x, y))
-
-        # Don't put a dot under Pac-Man.
-        self.dots.discard((self.pacman_x, self.pacman_y))
-
-    def is_walkable(self, x, y):
-        """Check if possible to acces a cell"""
-        if x < 0 or x >= len(self.maze[0]):
-            return False
-        if y < 0 or y >= len(self.maze):
-            return False
-        # 15
-        if self.maze[y][x] == 15:
-            return False
-        return True
-
-    def can_move(self, direction):
-        """Check whether pacman can move in a direction."""
-        dx = 0
-        dy = 0
-
-        if direction == "up":
-            dy = -1
-        elif direction == "down":
-            dy = 1
-        elif direction == "left":
-            dx = -1
-        elif direction == "right":
-            dx = 1
-
-        x = self.pacman_x
-        y = self.pacman_y
-        new_x = x + dx
-        new_y = y + dy
-
-        if not self.is_walkable(new_x, new_y):
-            return False
-        cell = self.maze[y][x]
-        if direction == "up" and cell & 1:
-            return False
-        if direction == "right" and cell & 2:
-            return False
-        if direction == "down" and cell & 4:
-            return False
-        if direction == "left" and cell & 8:
-            return False
-
-        return True
+    def draw_score(self, score):
+        text = f"Score: {score}"
+        x = self.x + 500
+        self.bdfs_writing(text, 3, x, 0)
     
-    def update_pacman(self):
-        """Update movement"""
-
-        self.pacman_move_timer += 1
-
-        if self.pacman_move_timer < constants.PACMAN_SPEED:
-            return
-        self.pacman_move_timer = 0
-        if self.can_move(self.wanted_direction):
-            self.move_pacman(self.wanted_direction)
-        elif self.can_move(self.pacman_direction):
-            self.move_pacman(self.pacman_direction)
-
-    def draw(self):
-        """Draw the complete game screen."""
-        self.update_pacman()
-        self._copy_maze()
-        self._draw_pacman()
-        self._draw_dots()
-        self._draw_ghosts()
-        self.update_pacman_animation()
-        
-    def update_pacman_animation(self):
-        """Change Pac-Man's animation frame."""
-
-        self.pacman_frame_timer += 1
-        if self.pacman_frame_timer >= constants.PACMAN_FRAME_TIMER:
-            self.pacman_frame_timer = 0
-            self.pacman_frame += 1
-            if self.pacman_frame >= 3:
-                self.pacman_frame = 0
+    def start_timer(self):
+        self.mlx.mlx_loop_hook(self.mlx_ptr, self.update_timer, None)
 
 
-    def _calc_maze_dims(self):
-        """Calculate cell size and maze position."""
-        # calculate the space that we can use
-        available_width = self.gfx.width - constants.MARGIN * 2
-        available_height = self.gfx.height - constants.MARGIN * 2
-        print({self.gfx.width}, {self.gfx.height})
-        print(f"available width:{available_width}, available height{available_height}")
+    def update_timer(self, __param):
+        elapsed = int(time.monotonic() - self.level_start_time)
+        remaining = max(0, self.level_duration - elapsed)
 
-        cell_width = available_width // self.maze_width
-        cell_height = available_height // self.maze_height
-        print(f"cell width: {cell_width}, cell height: {cell_height}")
-        
-        self.cell_size = min(cell_width, cell_height)
-        print(f"cell size: {self.cell_size}")
-        
-        maze_pixel_width = (self.maze_width * self.cell_size)
-        maze_pixel_height = (self.maze_height * self.cell_size)
-        print(f"maze pixel width: {maze_pixel_width}, maze pixel height: {maze_pixel_height}")
+        if remaining != self.last_displayed_second:
+            self.last_displayed_second = remaining
 
-        self.offset_x = (self.gfx.width - maze_pixel_width) // 2
-        self.offset_y = (self.gfx.height - maze_pixel_height) // 2
-        print(f"offset_x: {self.offset_x}, offset_y: {self.offset_y}")
+            minutes, seconds = divmod(remaining, 60)
+            timer_text = f"{minutes:02}:{seconds:02}"
 
-    def draw_maze(self):
-        """Draw the maze centered on the screen."""
-        print("draw maze")
-        for y in range(self.maze_height):
-            for x in range(self.maze_width):
-                self.draw_cell(x,y)
+            self.bdfs_writing(timer_text, 3, 1400, 0)
 
-    def draw_cell(self, x, y):
-        value = self.maze[y][x]
-        px = self.offset_x + (x * self.cell_size)
-        py = self.offset_y + (y * self.cell_size)
-
-        # North wall
-        if value & 1:
-            self.gfx.line(px, py, px + self.cell_size, py, 0x0000FF, thickness=2)
-        # West wall
-        if value & 8:
-            self.gfx.line(px, py, px, py + self.cell_size, 0x0000FF, thickness=2)
-        # East wall
-        if x == self.maze_width - 1 and value & 2:
-            self.gfx.line(px + self.cell_size, py, px + self.cell_size, py + self.cell_size, 0x0000FF, thickness=2)
-        # South wall
-        if y == self.maze_height - 1 and value & 4:
-            self.gfx.line( px, py + self.cell_size, px + self.cell_size, py + self.cell_size, 0x0000FF, thickness=2)
-
-    def _draw_pacman(self):
-        """Draw Pac-Man."""
-        sprite_name = self.pacman_sprites[self.pacman_direction][self.pacman_frame]
-        px = (self.offset_x + self.pacman_x * self.cell_size + self.cell_size // 2)
-        py = (self.offset_y + self.pacman_y * self.cell_size + self.cell_size // 2)
-        width, height = self.gfx.sprite_size(sprite_name)
-        self.gfx.sprite(sprite_name, px - width // 2, py - height // 2)
-        
-    def _draw_dots(self):
-        """Draw all remaining dots."""
-
-        for x, y in self.dots:
-            px = ((self.offset_x + x * self.cell_size) + self.cell_size // 2)
-
-            py = ((self.offset_y + y * self.cell_size) + self.cell_size // 2)
-            self.gfx.sprite("pacgum", px - self.pacgum_width // 2, py - self.pacgum_height // 2)
+        if remaining == 0:
+            #should display game over
+            pass
     
-    def _draw_ghosts(self):
-        """Draw all ghosts."""
+    def put_back(self):
+        img, _, _ = self.background
+        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, 0, 0)
+    
+    def bdfs_writing(self, text, scale, x, y):
+        font = Font("assets/10x20.bdf")
+        bitmap = font.draw(text) * scale
 
-        for ghost in self.ghosts:
-            sprite_name = ghost["name"]
-            px = ((self.offset_x + ghost["x"] * self.cell_size) + self.cell_size // 2 )
-            py = ((self.offset_y + ghost["y"] * self.cell_size) + self.cell_size // 2)
+        rows = bitmap.todata(2)
+        text_width = bitmap.width()
+        text_height = bitmap.height()
 
-            width, height = self.gfx.sprite_size(sprite_name)
-            self.gfx.sprite(sprite_name, px - width // 2, py - height // 2 )
-            
-    def move_pacman(self, direction):
-        """Move Pac-Man in the given direction."""
+        img = self.mlx.mlx_new_image(self.mlx_ptr, text_width, text_height)
 
-        dx = 0
-        dy = 0
+        data, bpp, line_size, img_format = self.mlx.mlx_get_data_addr(img)
 
-        if direction == "up":
-            dy = -1
-        elif direction == "down":
-            dy = 1
-        elif direction == "left":
-            dx = -1
-        elif direction == "right":
-            dx = 1
+        bytes_per_pixel = bpp // 8
 
-        if not self.can_move(direction):
-            return False
+        background = 0xFF0060B4
+        color = 0xFFFFFFFF
 
-        self.pacman_x += dx
-        self.pacman_y += dy
-
-        self.pacman_direction = direction
-
-        # Eat the dot.
-        self.dots.discard(
-            (self.pacman_x, self.pacman_y)
+        bg_bytes = background.to_bytes(
+            bytes_per_pixel, "little"
+        )
+        fg_bytes = color.to_bytes(
+            bytes_per_pixel, "little"
         )
 
-        return True
+        for py in range(text_height):
+            for px in range(text_width):
+                offset = py * line_size + px * bytes_per_pixel
+                data[offset:offset + bytes_per_pixel] = bg_bytes
 
-    def handle_key(self, key):
-        if key in (65362, ord("w")):
-            self.wanted_direction = "up"
+        for py, row in enumerate(rows):
+            for px, pixel in enumerate(row):
+                if pixel:
+                    offset = py * line_size + px * bytes_per_pixel
+                    data[offset:offset + bytes_per_pixel] = fg_bytes
 
-        elif key in (65364, ord("s")):
-            self.wanted_direction = "down"
+        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, x, 0)
 
-        elif key in (65361, ord("a")):
-            self.wanted_direction = "left"
+    def render(self):
+        self.put_back()
+        self.draw_hearts()
+        self.draw_score(20)
+        
 
-        elif key in (65363, ord("d")):
-            self.wanted_direction = "right"
+

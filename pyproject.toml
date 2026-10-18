@@ -1,0 +1,17 @@
+[project]
+name = "pac-mac-github"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "bdfparser>=2.2.0",
+    "mazegenerator",
+    "mlx",
+    "pydantic>=2.14.1",
+    "pytest>=9.1.1",
+]
+
+[tool.uv.sources]
+mlx = { path = "mlx/ubuntu/mlx-2.2-py3-none-any.whl" }
+mazegenerator = { path = "mazegenerator/mazegenerator-2.1.0-py3-none-any.whl" }
