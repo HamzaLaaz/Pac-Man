@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-DEFAULT_SIZES = [15, 15, 17, 17, 19, 19, 21, 21, 23, 25]
+DEFAULT_SIZES = [15, 17, 17, 19, 19, 21, 21, 23, 25, 28]
 MIN_LEVELS = 10
 
 
@@ -13,8 +13,8 @@ class LevelConfig(BaseModel):
     """Size of one maze."""
 
     model_config = ConfigDict(validate_assignment=True)
-    width: int = Field(default=15, ge=5, le=100, strict=True)
-    height: int = Field(default=15, ge=5, le=100, strict=True)
+    width: int = Field(default=15, ge=5, le=29, strict=True)
+    height: int = Field(default=15, ge=5, le=29, strict=True)
 
 
 class GameSettings(BaseModel):
@@ -145,42 +145,37 @@ class Config(BaseModel):
     def remove_comments(cls, data: str) -> str:
         """Remove #, // and /* */ comments, keeping strings and newlines."""
         """Blank out lines that start with '#'."""
-        lines = data.splitlines()
-        for i, line in enumerate(lines):
-            if line.lstrip().startswith("#"):
-                lines[i] = ""
-        return "\n".join(lines)
-        # result: list[str] = []
-        # i = 0
-        # is_string = False
-        # escaped = False
-        # while i < len(data):
-        #     ch = data[i]
-        #     next_ch = data[i + 1] if i + 1 < len(data) else ""
-        #     if is_string:
-        #         result.append(ch)
-        #         if escaped:
-        #             escaped = False
-        #         elif ch == "\\":
-        #             escaped = True
-        #         elif ch == '"':
-        #             is_string = False
-        #         i += 1
-        #     elif ch == '"':
-        #         is_string = True
-        #         result.append(ch)
-        #         i += 1
-        #     elif ch == "#" or (ch == "/" and next_ch == "/"):
-        #         while i < len(data) and data[i] != "\n":
-        #             i += 1
-        #     elif ch == "/" and next_ch == "*":
-        #         i += 2
-        #         while i < len(data) and data[i:i + 2] != "*/":
-        #             if data[i] == "\n":
-        #                 result.append("\n")
-        #             i += 1
-        #         i += 2
-        #     else:
-        #         result.append(ch)
-        #         i += 1
-        # return "".join(result)
+        result: list[str] = []
+        i = 0
+        is_string = False
+        escaped = False
+        while i < len(data):
+            ch = data[i]
+            next_ch = data[i + 1] if i + 1 < len(data) else ""
+            if is_string:
+                result.append(ch)
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    is_string = False
+                i += 1
+            elif ch == '"':
+                is_string = True
+                result.append(ch)
+                i += 1
+            elif ch == "#" or (ch == "/" and next_ch == "/"):
+                while i < len(data) and data[i] != "\n":
+                    i += 1
+            elif ch == "/" and next_ch == "*":
+                i += 2
+                while i < len(data) and data[i:i + 2] != "*/":
+                    if data[i] == "\n":
+                        result.append("\n")
+                    i += 1
+                i += 2
+            else:
+                result.append(ch)
+                i += 1
+        return "".join(result)
