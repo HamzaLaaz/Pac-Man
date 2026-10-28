@@ -6,7 +6,7 @@ from screens.mlx_class import MlxClass
 class Pacman:
     """Pac-Man: position, movement, animation and drawing."""
 
-    def __init__(self, lives, mlx_class: MlxClass, game_screen: "GameScreen"):
+    def __init__(self, mlx_class: MlxClass, game_screen: "GameScreen"):
         self.mlx_class = mlx_class
         self.mlx = mlx_class.mlx
         self.mlx_ptr = mlx_class.mlx_ptr
@@ -22,6 +22,9 @@ class Pacman:
         self.pacman_frame = 0
         self.pacman_frame_timer = 0
         self.pacman_move_timer = 0
+        self.power_up_end_time = 0
+        self.powerup_active = False
+        self.lives = 3
         self.load_assets()
 
     def load_assets(self):
@@ -32,6 +35,40 @@ class Pacman:
                     self.mlx_ptr, f"assets/pacman-art/pacman-{d}/{d}_{i}.png")
                 self.sprites[d].append(
                     self.game_screen.scale_image(img, w, h, self.size, self.size))
+    
+    def activate_power_up(self, ghosts):
+        """Make all ghosts edible for a short time."""
+        self.power_up_end_time = time.monotonic() + POWER_UP_DURATION
+        self.powerup_active = True
+        for ghost in ghosts:
+            ghost.edible = not ghost.eaten
+
+    def update_power_up(self, ghosts):
+        """Update power up timer and revert ghosts when expired."""
+        if self.powerup_active and time.monotonic() >= self.power_up_end_time:
+            self.powerup_active = False
+            self.power_up_end_time = 0
+            for ghost in ghosts:
+                ghost.edible = False
+
+    def lose_life(self, ghosts):
+        """Pac-Man loses a life and respawns."""
+        self.lives -= 1
+        self.powerup_active = False
+        self.power_up_end_time = 0
+        if self.lives <= 0:
+            self.game_screen.game_over = True
+            return
+        self.pacman_x, self.pacman_y = self.pacman_start()
+        self.pacman_direction = "left"
+        self.wanted_direction = "left"
+        self.pacman_move_timer = 0
+        for ghost in ghosts:
+            ghost.reset_ghost_position()
+            ghost.edible = False
+            ghost.eaten = False
+            ghost.ghost_respawn_time = 0
+            ghost.move_timer = 0
     
     def is_walkable(self, x, y):
         """Check if possible to acces a cell"""
@@ -136,7 +173,6 @@ class Pacman:
             self.move_pacman(self.pacman_direction)
         
         self.game_screen.dots.eat(self.pacman_x, self.pacman_y)
-        print(self.pacman_x, self.pacman_y)
     
     def update_pacman_animation(self):
         """Change Pac-Man's animation frame."""
@@ -149,8 +185,6 @@ class Pacman:
                 self.pacman_frame = 0
     
     def draw(self):
-        self.update_pacman()
-        self.game_screen = self.game_screen
         margin = (self.game_screen.cell_size - self.size) // 2
         px = self.game_screen.offset_x + self.pacman_x * self.game_screen.cell_size + margin
         py = self.game_screen.offset_y + self.pacman_y * self.game_screen.cell_size + margin
@@ -265,9 +299,13 @@ class Pacgums:
         if (x, y) in self.dots:
             self.dots.discard((x, y))
             self.redraw_dots_image()
+            self.game_screen.add_score(POINTS_PER_PACGUM)
         if (x, y) in self.super_pacgums:
             self.super_pacgums.discard((x, y))
             self.redraw_dots_image()
+            self.game_screen.add_score(POINTS_PER_SUPERPACGUM)
+            # Activate power-up!
+            self.pacman.activate_power_up(self.game_screen.ghosts)
 
     def draw(self):
         """Draw the pacgums, then the super pacgums."""
@@ -294,30 +332,56 @@ class Ghost:
         self.sprites = {}
         self.ai = None  # Will be set by GameScreen
         self.move_timer = 0
+        self.ghost_respawn_time = 0
         self.speed = GHOST_SPEED
-        self.sprites["blue_ghost"] = self.mlx.mlx_png_file_to_image(self.mlx_ptr, "assets/pacman-art/ghosts/blue_ghost.png")
+        img, w, h = self.mlx.mlx_png_file_to_image(self.mlx_ptr, "assets/pacman-art/ghosts/blue_ghost.png")
+        self.sprites["blue_ghost"] = (self.game_screen.scale_image(img, w, h, self.size, self.size), w, h)
     
     def load_assets(self):
         img, w, h = self.mlx.mlx_png_file_to_image(self.mlx_ptr, f"assets/pacman-art/ghosts/{self.name}.png")
         self.sprites[self.name] = (self.game_screen.scale_image(img, w, h, self.size, self.size), w, h)
     
+    def reset_ghost_position(self):
+        self.x = self.original_x
+        self.y = self.original_y
+    
+    def eat_ghost(self):
+        """Pac-Man eats an edible ghost."""
+        if self.eaten or not self.edible:
+            return False
+        self.eaten = True
+        self.edible = False
+        self.reset_ghost_position()
+        self.ghost_respawn_time = time.monotonic() + GHOST_RESPAWN_DELAY
+        return True
+    
+    def update_ghost_respawns(self):
+        """Update ghost respawn timers and bring them back."""
+        if self.eaten and time.monotonic() >= self.ghost_respawn_time:
+            self.eaten = False
+            self.ghost_respawn_time = 0
+            # A ghost returning during a power-up is still frightened.
+            self.edible = False
+    
     def update(self):
-        """Update ghost position using AI."""
+        self.update_ghost_respawns()
         if self.eaten:
             return
-        
+        # self.edible = self.game_screen.pacman.powerup_active
         self.move_timer += 1
         if self.move_timer < self.speed:
             return
         self.move_timer = 0
         
-        if self.ai:
-            next_move = self.ai.get_next_move()
-            if next_move:
-                self.x, self.y = next_move
+        ###### rmove this if u want to test
+        
+        # if self.ai:
+        #     next_move = self.ai.get_next_move()
+        #     if next_move:
+        #         self.x, self.y = next_move
+
 
     def draw(self):
-        self.update()
         if self.edible:
             sprite_name = "blue_ghost"
         else:
@@ -326,4 +390,5 @@ class Ghost:
         px = ((self.game_screen.offset_x + self.x * self.game_screen.cell_size) + (margin))
         py = ((self.game_screen.offset_y + self.y * self.game_screen.cell_size) + (margin))
         img, w, h = self.sprites[sprite_name]
-        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, px, py)
+        if not self.eaten and self.ghost_respawn_time == 0:
+            self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, px, py)

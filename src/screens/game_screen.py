@@ -35,8 +35,9 @@ class GameScreen:
         self.offset_y = 0
         self.build_maze_image()
         # pacman
-        self.pacman_lifes = 3
-        self.pacman = Pacman(self.pacman_lifes, self.mlx_class, self)
+        self.pacman = Pacman(self.mlx_class, self)
+        
+        self.powerup_timer = 0
         # dots
         self.dots = Pacgums(self, self.pacman)
         # Ghost
@@ -125,18 +126,17 @@ class GameScreen:
     def draw_hearts(self):
         img, w, h = self.heart
         self.x = 0
-        for i in range(self.pacman_lifes):
+        for i in range(self.pacman.lives):
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, self.x, 0)
             self.x += w + 10
     
-    def draw_score(self, score):
-        self.current_score = f"Score: {score}"
-        x = self.x + 500
-        self.last_score = self.current_score
-        self.bdfs_writing_score(self.current_score, 3, x, 0)
+    def draw_score(self):
+        score = f"Score: {self.current_score}"
+        x = 174 + 500
+        self.bdfs_writing_score(score, 3, x, 0)
     
     def bdfs_writing_score(self, text, scale, x, y):
-        if self.current_score == self.last_score and self.score_img != None:
+        if text == self.last_score and self.score_img != None:
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.score_img, x, 0)
         else:
             if self.score_img != None:
@@ -173,6 +173,7 @@ class GameScreen:
                     if pixel:
                         offset = py * line_size + px * bytes_per_pixel
                         data[offset:offset + bytes_per_pixel] = fg_bytes
+            self.last_score = text
 
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.score_img, x, 0)   
     
@@ -236,18 +237,42 @@ class GameScreen:
                         data[offset:offset + bytes_per_pixel] = fg_bytes
 
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.timer_img, x, 0)
-        # self.mlx.mlx_destroy_image(self.mlx_ptr, img)
+    
+    def add_score(self, points: int):
+        """Add points to current score."""
+        self.current_score += points
+    
+    def check_colli(self):
+        if self.game_over:
+            return
+        for ghost in self.ghosts:
+            if ghost.eaten:
+                continue
+            if (self.pacman.pacman_x, self.pacman.pacman_y) != (ghost.x, ghost.y):
+                continue
+            if ghost.edible:
+                if ghost.eat_ghost():
+                    self.add_score(POINTS_PER_GHOST)
+            else:
+                self.pacman.lose_life(self.ghosts)
+                break
+
 
     def render(self):
-        # self.put_back()
+        if not self.game_over:
+            self.pacman.update_pacman()
+            self.pacman.update_power_up(self.ghosts)
+            for ghost in self.ghosts:
+                ghost.update()
+            self.check_colli()
         self.draw_hearts()
         self.update_timer()
-        self.draw_score(20)
+        self.draw_score()
         self.draw_maze()
         self.dots.draw()
-        self.pacman.draw()
         for ghost in self.ghosts:
             ghost.draw()
+        self.pacman.draw()
     
     def handle_key(self, key):
         if not self.game_over:
