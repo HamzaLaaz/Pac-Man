@@ -3,14 +3,18 @@ from screens.main_menu import MainMenu
 from screens.mlx_class import MlxClass
 from screens.game_screen import GameScreen
 from screens.constants import *
+from config import Config
 
 
 frame_duration = 1.0 / FPS
 last_time = time.perf_counter()
 mlx_class = MlxClass("Pacman", 1920, 1080)
 menu = MainMenu(mlx_class)
-game_screen = GameScreen(14, 15, 42, mlx_class)
+game_screen = GameScreen(15, 15, 42, mlx_class)
 current_screen = "menu"
+path = "src/config.json"
+config = Config.start(path)
+
 
 def loop(param) -> None:
     global last_time
@@ -19,7 +23,6 @@ def loop(param) -> None:
         menu.on_motion()
         menu.render()
     elif current_screen == "game" and game_screen is not None:
-        game_screen.start_timer()
         game_screen.render()
     elapsed_time = time.perf_counter() - start_time
     sleep_time = frame_duration - elapsed_time
@@ -30,8 +33,6 @@ def loop(param) -> None:
     last_time = current_time
     actual_fps = 1.0 / total_frame_time
     
-    # Print the raw, unfiltered FPS
-    print(f"FPS: {actual_fps:.1f}   ", end="\r")
 
 
 def on_mouse(button: int, x: int, y: int, param) -> None:
@@ -42,6 +43,7 @@ def on_mouse(button: int, x: int, y: int, param) -> None:
     if action == "exit":
         mlx_class.stop()
     elif action == "start_game" and game_screen is not None:
+        game_screen.start_timer()
         current_screen = "game"
 
 
