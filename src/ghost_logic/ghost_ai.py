@@ -22,7 +22,7 @@ class GhostAI:
             "inky": (self.screen.maze_width - 1, self.screen.maze_height - 1),
             "clyde": (0, self.screen.maze_height - 1),
         }
-        # 1. Scared / Edible State
+        # Scared / Edible State
         if self.ghost.edible:
             return corners.get(self.ghost.name, (0, 0))
         dir_map = {"up": (0, -1), "down": (0, 1), "left": (-1, 0), "right": (1, 0)}
@@ -39,7 +39,6 @@ class GhostAI:
             vec_x = two_ahead_x - self.blinky.x
             vec_y = two_ahead_y - self.blinky.y
             return (self.blinky.x + vec_x * 2, self.blinky.y + vec_y * 2)
-        # 5. Clyde
         if self.ghost.name == "clyde":
             dist = abs(self.ghost.x - self.pacman.x) + abs(self.ghost.y - self.pacman.y)
             if dist > 8:
@@ -76,5 +75,5 @@ class GhostAI:
     def get_next_move(self) -> tuple[int, int] | None:
         path = self._find_short_path((self.ghost.x, self.ghost.y))
         if path:
-            return path[0]  # Next (x, y) tile to step on
+            return path[0]
         return None
