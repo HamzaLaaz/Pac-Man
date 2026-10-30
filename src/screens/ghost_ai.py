@@ -1,5 +1,6 @@
-from screens.classes.entities import Ghost, Pacman
+from .classes.entities import Ghost, Pacman
 from collections import deque
+from .constants import N, S, E, W
 
 class GhostAI:
     """Decide the target and movement strategy for a ghost."""
@@ -20,7 +21,7 @@ class GhostAI:
             "inky": (self.screen.maze_width - 1, self.screen.maze_height - 1),
             "clyde": (0, self.screen.maze_height - 1),
         }
-        # 1. Scared / Edible State
+        # Scared / Edible State
         if self.ghost.edible:
             return corners.get(self.ghost.name, (0, 0))
         dir_map = {"up": (0, -1), "down": (0, 1), "left": (-1, 0), "right": (1, 0)}
@@ -37,7 +38,6 @@ class GhostAI:
             vec_x = two_ahead_x - self.blinky.x
             vec_y = two_ahead_y - self.blinky.y
             return (self.blinky.x + vec_x * 2, self.blinky.y + vec_y * 2)
-        # 5. Clyde
         if self.ghost.name == "clyde":
             dist = abs(self.ghost.x - self.pacman.pacman_x) + abs(self.ghost.y - self.pacman.pacman_y)
             if dist > 8:
@@ -46,21 +46,35 @@ class GhostAI:
         return (self.pacman.pacman_x, self.pacman.pacman_y)
 
     def _find_short_path(self, start: tuple[int, int]) -> list[tuple[int, int]]:
-        moves = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        moves = [(0, -1, N), (1, 0, E), (0, 1, S), (-1, 0, W)]
         goal = self.get_target()
         queue = deque([start])
         visited = {start}
         parent = {}
+
         while queue:
             x, y = queue.popleft()
             if (x, y) == goal:
                 break
-            for dx, dy in moves:
+            for dx, dy, wall in moves:
                 nx, ny = x + dx, y + dy
-                if (nx, ny) not in visited:
-                    visited.add((nx, ny))
-                    parent[(nx, ny)] = (x, y)
-                    queue.append((nx, ny))
+                # Check maze boundaries
+                if not (0 <= nx < self.screen.maze_width):
+                    continue
+                if not (0 <= ny < self.screen.maze_height):
+                    continue
+                # Check if this direction is blocked by a wall
+                cell = self.screen.maze_grid[y][x]
+                if isinstance(cell, str):
+                    cell = int(cell, 16)
+                if cell & wall:
+                    continue
+                if (nx, ny) in visited:
+                    continue
+                visited.add((nx, ny))
+                parent[(nx, ny)] = (x, y)
+                queue.append((nx, ny))
+
         if goal not in visited:
             return []
         path = []
@@ -74,5 +88,5 @@ class GhostAI:
     def get_next_move(self) -> tuple[int, int] | None:
         path = self._find_short_path((self.ghost.x, self.ghost.y))
         if path:
-            return path[0]  # Next (x, y) tile to step on
+            return path[0]
         return None
