@@ -19,14 +19,14 @@ class GameScreen:
         self.mlx_win = mlx_class.win
         self.x = 0
         self.y = 0
-        
-        # timer 
+
+        # timer
         self.level_duration = 90
         self.level_start_time = time.monotonic()
         self.last_displayed_second = None
-        
+
         self.game_over = False
-        
+
         self.maze_generator = MazeGenerator(size=(self.maze_width, self.maze_height), perfect=False, seed = self.seed)
         self.maze_grid = self.maze_generator.maze
         self.maze_img = None
@@ -36,7 +36,7 @@ class GameScreen:
         self.build_maze_image()
         # pacman
         self.pacman = Pacman(self.mlx_class, self)
-        
+
         self.powerup_timer = 0
         # dots
         self.dots = Pacgums(self, self.pacman)
@@ -54,8 +54,8 @@ class GameScreen:
             blinky_ref = self.blinky if ghost.name == "inky" else None
             ghost.ai = GhostAI(ghost, self.pacman, self, blinky_ref)
 
-        
-        
+
+
         self.background = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/background.xpm")
         self.heart = self.mlx.mlx_png_file_to_image(self.mlx_ptr, "assets/pacman-art/other/heart.png")
         self.font = Font("assets/10x20.bdf")
@@ -66,13 +66,13 @@ class GameScreen:
         self.score_img = None
         self.current_score = 0
         self.last_score = 0
-        
+
     def _fill_rect(self, data, line_size, bypp, x, y, w, h, color):
         row = color * w
         for yy in range(y, y + h):
             off = yy * line_size + x * bypp
             data[off:off + w * bypp] = row
-    
+
     def scale_image(self, img, src_w, src_h, dst_w, dst_h):
         src, bpp, src_ls, _ = self.mlx.mlx_get_data_addr(img)
         bypp = bpp // 8
@@ -86,7 +86,7 @@ class GameScreen:
                 d = y * dst_ls + x * bypp
                 dst[d:d + bypp] = src[s:s + bypp]
         return new
-    
+
     def build_maze_image(self):
         free_w = self.mlx_class.width
         free_h = self.mlx_class.height - GAME_SCREEN_Y_MARGIN
@@ -119,22 +119,22 @@ class GameScreen:
                     self._fill_rect(data, line_size, bypp, x0, y0, thick, s, wall)
                 if val & E:
                     self._fill_rect(data, line_size, bypp, x0 + s - thick, y0, thick, s, wall)
-    
+
     def draw_maze(self):
         self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.maze_img, self.offset_x, self.offset_y)
-    
+
     def draw_hearts(self):
         img, w, h = self.heart
         self.x = 0
         for i in range(self.pacman.lives):
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, self.x, 0)
             self.x += w + 10
-    
+
     def draw_score(self):
         score = f"Score: {self.current_score}"
         x = 174 + 500
         self.bdfs_writing_score(score, 3, x, 0)
-    
+
     def bdfs_writing_score(self, text, scale, x, y):
         if text == self.last_score and self.score_img != None:
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.score_img, x, 0)
@@ -175,8 +175,8 @@ class GameScreen:
                         data[offset:offset + bytes_per_pixel] = fg_bytes
             self.last_score = text
 
-            self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.score_img, x, 0)   
-    
+            self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.score_img, x, 0)
+
     def start_timer(self):
         self.level_start_time = time.monotonic()
         self.game_over = False
@@ -196,7 +196,7 @@ class GameScreen:
         if remaining == 0:
             #should display game over
             pass
-    
+
     def bdfs_writing_timer(self, text, scale, x, y):
         if self.current_timer == self.last_timer and self.timer_img != None:
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.timer_img, x, 0)
@@ -237,11 +237,11 @@ class GameScreen:
                         data[offset:offset + bytes_per_pixel] = fg_bytes
 
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.timer_img, x, 0)
-    
+
     def add_score(self, points: int):
         """Add points to current score."""
         self.current_score += points
-    
+
     def check_colli(self):
         if self.game_over:
             return
@@ -273,11 +273,7 @@ class GameScreen:
         for ghost in self.ghosts:
             ghost.draw()
         self.pacman.draw()
-    
+
     def handle_key(self, key):
         if not self.game_over:
             self.pacman.handle_key(key)
-
-    
-
-

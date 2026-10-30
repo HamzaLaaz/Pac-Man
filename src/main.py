@@ -3,7 +3,7 @@ from screens.main_menu import MainMenu
 from screens.mlx_class import MlxClass
 from screens.game_screen import GameScreen
 from screens.constants import *
-from config import Config
+
 
 
 frame_duration = 1.0 / FPS
@@ -13,7 +13,6 @@ menu = MainMenu(mlx_class)
 game_screen = GameScreen(15, 15, 42, mlx_class)
 current_screen = "menu"
 path = "src/config.json"
-config = Config.start(path)
 
 
 def loop(param) -> None:
@@ -32,7 +31,7 @@ def loop(param) -> None:
     total_frame_time = current_time - last_time
     last_time = current_time
     actual_fps = 1.0 / total_frame_time
-    
+
 
 
 def on_mouse(button: int, x: int, y: int, param) -> None:
