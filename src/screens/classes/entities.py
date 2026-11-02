@@ -375,10 +375,10 @@ class Ghost:
 
         ###### rmove this if u want to test
 
-        if self.ai:
-            next_move = self.ai.get_next_move()
-            if next_move:
-                self.x, self.y = next_move
+        # if self.ai:
+        #     next_move = self.ai.get_next_move()
+        #     if next_move:
+        #         self.x, self.y = next_move
 
 
     def draw(self):
