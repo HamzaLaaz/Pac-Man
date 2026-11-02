@@ -24,6 +24,7 @@ class Pacman:
         self.pacman_move_timer = 0
         self.power_up_end_time = 0
         self.powerup_active = False
+        self.cheat_mode = False
         self.lives = 3
         self.load_assets()
 
@@ -204,8 +205,11 @@ class Pacman:
 
         elif key in (65363, ord("d")):
             self.wanted_direction = "right"
-
-
+        # FOR CHEAT MODES
+        elif key == ord("c"):
+            self.cheat_mode = not self.cheat_mode
+        elif key == ord("l"):
+            self.lives += 1
 class Pacgums:
     """All the pacgums (dots) and super pacgums of the maze."""
 
