@@ -120,13 +120,6 @@ class MainMenu:
         
 
     def on_key(self, keycode, _):
-        if keycode == 65362:      # up
-            self.selected = (self.selected - 1) % 4
-        elif keycode == 65364:    # down
-            self.selected = (self.selected + 1) % 4
-        elif keycode == 65293:    # enter
-            if self.selected == 3:
-                self.mlx.mlx_loop_exit(self.mlx_ptr)
-        elif keycode == 65307:    # esc
+        if keycode == 65307:    # esc
             self.mlx.mlx_loop_exit(self.mlx_ptr)
         self.render()

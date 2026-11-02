@@ -5,30 +5,66 @@ from .classes.entities import Pacman, Ghost
 from .classes.entities import Pacgums
 from .ghost_ai import GhostAI
 from bdfparser import Font
+from .text import TextDrawer
+from config import Config
 import time
 
 
 class GameScreen:
-    def __init__(self, maze_x: int, maze_y: int, seed: int, mlx_class: MlxClass):
-        self.maze_width = maze_x
-        self.maze_height = maze_y
-        self.seed = seed
+    def __init__(self, mlx_class: MlxClass, config: Config, level_index: int = 0,
+                 score: int = 0, lives: int | None = None):
+        level = config.game_settings.levels[level_index]
+        self.maze_width = level.width
+        self.maze_height = level.height
+        # First level uses the config seed, the next ones are random
+        # (MazeGenerator treats seed 0 as "random").
+        self.seed = config.game_settings.seed if level_index == 0 else 0
         self.mlx_class = mlx_class
         self.mlx = mlx_class.mlx
         self.mlx_ptr = mlx_class.mlx_ptr
         self.mlx_win = mlx_class.win
         self.x = 0
         self.y = 0
+        self.level_index = level_index
+        self.level_number = level_index + 1
+
+        # values from the config
+        self.max_lives = config.player.lives
+        self.points_pacgum = config.score.pacgum
+        self.points_super_pacgum = config.score.super_pacgum
+        self.points_ghost = config.score.ghost
 
         # timer
-        self.level_duration = 90
+        self.level_duration = config.game_settings.level_max_time
         self.level_start_time = time.monotonic()
         self.last_displayed_second = None
 
         self.game_over = False
+        self.level_won = False
+        self.needs_clear = True   # redraw the background on next frame
+        self.paused_at = 0.0
 
-        self.maze_generator = MazeGenerator(size=(self.maze_width, self.maze_height), perfect=False, seed = self.seed)
-        self.maze_grid = self.maze_generator.maze
+        # cheat mode
+        self.cheat_mode = False
+        self.invincible = False
+        self.ghosts_frozen = False
+
+        try:
+            self.maze_generator = MazeGenerator(
+                size=(self.maze_width, self.maze_height),
+                perfect=False, seed=self.seed)
+            self.maze_grid = self.maze_generator.maze
+        except Exception as error:
+            raise RuntimeError(
+                f"maze generator failed for level {self.level_number} "
+                f"({self.maze_width}x{self.maze_height}): {error}"
+            ) from error
+        if (len(self.maze_grid) != self.maze_height
+                or any(len(row) != self.maze_width
+                       for row in self.maze_grid)):
+            raise RuntimeError(
+                f"maze generator returned a maze of the wrong size "
+                f"for level {self.level_number}")
         self.maze_img = None
         self.cell_size = 0
         self.offset_x = 0
@@ -36,6 +72,9 @@ class GameScreen:
         self.build_maze_image()
         # pacman
         self.pacman = Pacman(self.mlx_class, self)
+        # lives are kept between levels
+        self.pacman.lives = self.max_lives if lives is None else lives
+        self.heart_slots = max(self.max_lives, self.pacman.lives)
 
         self.powerup_timer = 0
         # dots
@@ -58,14 +97,17 @@ class GameScreen:
 
         self.background = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/background.xpm")
         self.heart = self.mlx.mlx_png_file_to_image(self.mlx_ptr, "assets/pacman-art/other/heart.png")
+        self.heart_clear = self.mlx.mlx_png_file_to_image(self.mlx_ptr, "assets/pacman-art/other/heart_clear.png")
         self.font = Font("assets/10x20.bdf")
         minutes, seconds = divmod(self.level_duration, 60)
         self.last_timer = f"{minutes:02}:{seconds:02}"
         self.current_timer = f"{minutes:02}:{seconds:02}"
         self.timer_img = None
         self.score_img = None
-        self.current_score = 0
-        self.last_score = 0
+        self.text = TextDrawer(mlx_class)
+        # score is kept between levels
+        self.current_score = score
+        self.last_score = None
 
     def _fill_rect(self, data, line_size, bypp, x, y, w, h, color):
         row = color * w
@@ -124,11 +166,66 @@ class GameScreen:
         self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, self.maze_img, self.offset_x, self.offset_y)
 
     def draw_hearts(self):
-        img, w, h = self.heart
-        self.x = 0
-        for i in range(self.pacman.lives):
-            self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, self.x, 0)
-            self.x += w + 10
+        x = 0
+        y = 0
+
+        # heart_slots only grows, so hearts from extra lives get cleared
+        self.heart_slots = max(self.heart_slots, self.pacman.lives)
+        for i in range(self.heart_slots):
+            if i < self.pacman.lives:
+                img, w, h = self.heart
+            else:
+                img, w, h = self.heart_clear
+
+            self.mlx.mlx_put_image_to_window(
+                self.mlx_ptr, self.mlx_win, img, x, y
+            )
+            x += w + 10
+    
+    def draw_level(self):
+        """Draw 'Level N' in the HUD."""
+        self.text.draw(f"Level {self.level_number:<3}", 1050, 0)
+
+    def draw_cheat_status(self):
+        """Show which cheats are on (blank when cheat mode is off)."""
+        status = ""
+        if self.cheat_mode:
+            status = "CHEAT"
+            if self.invincible:
+                status += " INV"
+            if self.ghosts_frozen:
+                status += " FRZ"
+            if self.pacman.speed != PACMAN_SPEED:
+                status += " FAST"
+        self.text.draw(f"{status:<18}", 1650, 0, 2)
+
+    def check_level_complete(self):
+        """The level is won when every pacgum and super-pacgum is eaten."""
+        if not self.dots.dots and not self.dots.super_pacgums:
+            self.level_won = True
+
+    def pause(self):
+        """Remember when the game was paused."""
+        self.paused_at = time.monotonic()
+
+    def resume(self):
+        """Shift every timer by the time spent in pause."""
+        delta = time.monotonic() - self.paused_at
+        self.level_start_time += delta
+        if self.pacman.powerup_active:
+            self.pacman.power_up_end_time += delta
+        for ghost in self.ghosts:
+            if ghost.ghost_respawn_time:
+                ghost.ghost_respawn_time += delta
+        self.needs_clear = True
+
+    def destroy(self):
+        """Free the images owned by this level before switching level."""
+        for img in (self.maze_img, self.dots.dots_img, self.timer_img,
+                    self.score_img):
+            if img is not None:
+                self.mlx.mlx_destroy_image(self.mlx_ptr, img)
+        self.text.clear()
 
     def draw_score(self):
         score = f"Score: {self.current_score}"
@@ -193,9 +290,9 @@ class GameScreen:
         self.bdfs_writing_timer(self.current_timer, 3, 1400, 0)
         self.last_timer = self.current_timer
 
-        if remaining == 0:
+        if remaining == 0 and not self.game_over:
             #should display game over
-            pass
+            self.game_over = True
 
     def bdfs_writing_timer(self, text, scale, x, y):
         if self.current_timer == self.last_timer and self.timer_img != None:
@@ -243,6 +340,7 @@ class GameScreen:
         self.current_score += points
 
     def check_colli(self):
+        """Handle Pac-Man touching a ghost (eat it or lose a life)."""
         if self.game_over:
             return
         for ghost in self.ghosts:
@@ -252,28 +350,85 @@ class GameScreen:
                 continue
             if ghost.edible:
                 if ghost.eat_ghost():
-                    self.add_score(POINTS_PER_GHOST)
-            else:
+                    self.add_score(self.points_ghost)
+            elif not self.invincible:
                 self.pacman.lose_life(self.ghosts)
                 break
 
-
     def render(self):
-        if not self.game_over:
-            self.pacman.update_pacman()
-            self.pacman.update_power_up(self.ghosts)
+        """Update the game one frame and draw it.
+
+        When the level is won or the game is over nothing is drawn:
+        main.py checks `level_won` / `game_over` and changes screen.
+        """
+        if self.game_over or self.level_won:
+            return
+        if self.needs_clear:
+            self.put_back()
+            self.needs_clear = False
+
+        self.pacman.update_pacman()
+        self.pacman.update_power_up(self.ghosts)
+
+        if not self.ghosts_frozen:
             for ghost in self.ghosts:
                 ghost.update()
-            self.check_colli()
+        else:
+            for ghost in self.ghosts:
+                ghost.update_ghost_respawns()
+
+        self.check_colli()
+        self.check_level_complete()
+        if self.game_over or self.level_won:
+            return
+
         self.draw_hearts()
         self.update_timer()
+        # The timer may have ended the game
+        if self.game_over:
+            return
+
         self.draw_score()
+        self.draw_level()
+        self.draw_cheat_status()
         self.draw_maze()
         self.dots.draw()
+
         for ghost in self.ghosts:
             ghost.draw()
+
         self.pacman.draw()
 
     def handle_key(self, key):
-        if not self.game_over:
-            self.pacman.handle_key(key)
+        """Movement keys, plus the cheat keys when cheat mode is on."""
+        if self.game_over:
+            return
+        if key == ord("c"):
+            self.cheat_mode = not self.cheat_mode
+            if not self.cheat_mode:
+                self.invincible = False
+                self.ghosts_frozen = False
+                self.pacman.speed = PACMAN_SPEED
+            return
+        if self.cheat_mode:
+            if key == ord("n"):           # skip level
+                self.level_won = True
+                return
+            if key == ord("i"):           # invincibility
+                self.invincible = not self.invincible
+                return
+            if key == ord("f"):           # freeze ghosts
+                self.ghosts_frozen = not self.ghosts_frozen
+                return
+            if key == ord("l"):           # extra life
+                self.pacman.lives += 1
+                return
+            if key == ord("o"):           # fast pacman
+                fast = max(1, PACMAN_SPEED // 2)
+                self.pacman.speed = (PACMAN_SPEED
+                                     if self.pacman.speed == fast else fast)
+                return
+            if key == ord("t"):           # reset the level timer
+                self.level_start_time = time.monotonic()
+                return
+        self.pacman.handle_key(key)
