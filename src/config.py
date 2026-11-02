@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 DEFAULT_SIZES = [15, 17, 17, 19, 19, 21, 21, 23, 25, 28]
 MIN_LEVELS = 10
+MAX_FIX_ROUNDS = 50
 
 
 class LevelConfig(BaseModel):
@@ -19,7 +20,8 @@ class GameSettings(BaseModel):
     level_max_time: int = Field(default=90, ge=1, le=3600)
     seed: int = Field(default=42, ge=0)
     levels: list[LevelConfig] = Field(
-        default_factory=lambda: [LevelConfig(width=s, height=s) for s in DEFAULT_SIZES]
+        default_factory=lambda: [
+            LevelConfig(width=s, height=s) for s in DEFAULT_SIZES]
     )
 
 
@@ -47,25 +49,90 @@ class Config(BaseModel):
 
     @classmethod
     def start(cls, filename: str) -> "Config":
-        """Entry point: read the file and build the config safely."""
+        """Entry point: read the file and build the config safely.
+
+        Every invalid value is fixed one by one (clamped to its limit or
+        replaced by its default) and a warning is printed, so one bad
+        value never resets the whole configuration.
+        """
         data = cls.read_file(filename)
+        cls.fill_levels(data)
 
-        # Ensure levels array meets the minimum requirement
-        if "game_settings" in data and "levels" in data["game_settings"]:
-            raw_levels = data["game_settings"].get("levels", [])
-            if isinstance(raw_levels, list):
-                # Ensure at least 10 levels exist by filling missing ones with default sizes
-                while len(raw_levels) < MIN_LEVELS:
-                    idx = len(raw_levels)
-                    size = DEFAULT_SIZES[idx] if idx < len(DEFAULT_SIZES) else 28
-                    raw_levels.append({"width": size, "height": size})
-                data["game_settings"]["levels"] = raw_levels
+        for _ in range(MAX_FIX_ROUNDS):
+            try:
+                return cls.model_validate(data)
+            except ValidationError as error:
+                for err in error.errors():
+                    cls.fix_value(data, err)
+            except Exception as error:
+                print(f"Warning: invalid configuration ({error}), "
+                      "using default values.")
+                return cls()
+        print("Warning: configuration could not be repaired, "
+              "using default values.")
+        return cls()
 
+    @staticmethod
+    def fill_levels(data: dict[str, Any]) -> None:
+        """Add default levels until there are at least MIN_LEVELS."""
+        settings = data.get("game_settings")
+        if not isinstance(settings, dict):
+            return
+        raw_levels = settings.get("levels")
+        if not isinstance(raw_levels, list):
+            return
+        if len(raw_levels) < MIN_LEVELS:
+            print(f"Warning: config has {len(raw_levels)} levels, "
+                  f"adding default levels up to {MIN_LEVELS}.")
+        while len(raw_levels) < MIN_LEVELS:
+            idx = len(raw_levels)
+            size = DEFAULT_SIZES[idx] if idx < len(DEFAULT_SIZES) else 28
+            raw_levels.append({"width": size, "height": size})
+
+    @staticmethod
+    def fix_value(data: dict[str, Any], err: Any) -> None:
+        """Clamp or remove the value described by a pydantic error."""
+        loc = err.get("loc", ())
+        if not loc:
+            data.clear()
+            return
+        name = ".".join(str(part) for part in loc)
+        parent: Any = data
         try:
-            return cls.model_validate(data)
-        except Exception as error:
-            print(f"Warning: Error parsing configuration ({error}). Using default fallback.")
-            return cls()
+            for part in loc[:-1]:
+                parent = parent[part]
+            last = loc[-1]
+            value = parent[last]
+        except (KeyError, IndexError, TypeError):
+            # The parent itself is broken: drop the top-level key.
+            data.pop(loc[0], None)
+            print(f"Warning: config '{loc[0]}' is invalid, using defaults.")
+            return
+
+        ctx = err.get("ctx") or {}
+        kind = err.get("type", "")
+        if kind in ("greater_than_equal", "greater_than") and "ge" in ctx:
+            new_value: Any = ctx["ge"]
+        elif kind in ("greater_than_equal", "greater_than") and "gt" in ctx:
+            new_value = ctx["gt"] + 1
+        elif kind in ("less_than_equal", "less_than") and "le" in ctx:
+            new_value = ctx["le"]
+        elif kind in ("less_than_equal", "less_than") and "lt" in ctx:
+            new_value = ctx["lt"] - 1
+        else:
+            new_value = None
+
+        if new_value is not None:
+            parent[last] = new_value
+            print(f"Warning: config '{name}' = {value!r} is out of range, "
+                  f"clamped to {new_value}.")
+        elif isinstance(parent, list):
+            parent[last] = {}
+            print(f"Warning: config '{name}' is invalid, using default level.")
+        else:
+            del parent[last]
+            print(f"Warning: config '{name}' = {value!r} is invalid "
+                  f"({err.get('msg', 'bad value')}), using default.")
 
     @classmethod
     def read_file(cls, filename: str) -> dict[str, Any]:
@@ -80,7 +147,8 @@ class Config(BaseModel):
         except (OSError, UnicodeDecodeError) as error:
             print(f"Warning: Cannot read '{filename}': {error}")
         except json.JSONDecodeError as error:
-            print(f"Warning: Invalid JSON in '{filename}' (line {error.lineno})")
+            print(f"Warning: Invalid JSON in '{filename}' "
+                  f"(line {error.lineno})")
         return {}
 
     @staticmethod

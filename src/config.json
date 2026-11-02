@@ -16,7 +16,7 @@
 		"seed": 42,
 
 		# One entry per level, in order (at least 10 levels).
-		# width and height are the maze size (5 to 100)
+		# width and height are the maze size (5 to 29)
 		"levels": [
 			{"width": 15, "height": 15},
 			{"width": 15, "height": 15},
