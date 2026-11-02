@@ -9,7 +9,6 @@ class MlxClass:
         self.width = width if width is not None else sw
         self.height = height if height is not None else sh
         self.win = self.mlx.mlx_new_window(self.mlx_ptr, self.width, self.height, title)
-        print(self.win)
         if not self.win:
             raise RuntimeError("could not create window")
         
