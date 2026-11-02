@@ -25,6 +25,7 @@ class Pacman:
         self.power_up_end_time = 0
         self.powerup_active = False
         self.lives = 3
+        self.speed = PACMAN_SPEED
         self.load_assets()
 
     def load_assets(self):
@@ -164,7 +165,7 @@ class Pacman:
 
         self.pacman_move_timer += 1
 
-        if self.pacman_move_timer < PACMAN_SPEED:
+        if self.pacman_move_timer < self.speed:
             return
         self.pacman_move_timer = 0
         if self.can_move(self.wanted_direction):
@@ -299,11 +300,11 @@ class Pacgums:
         if (x, y) in self.dots:
             self.dots.discard((x, y))
             self.redraw_dots_image()
-            self.game_screen.add_score(POINTS_PER_PACGUM)
+            self.game_screen.add_score(self.game_screen.points_pacgum)
         if (x, y) in self.super_pacgums:
             self.super_pacgums.discard((x, y))
             self.redraw_dots_image()
-            self.game_screen.add_score(POINTS_PER_SUPERPACGUM)
+            self.game_screen.add_score(self.game_screen.points_super_pacgum)
             # Activate power-up!
             self.pacman.activate_power_up(self.game_screen.ghosts)
 
@@ -375,10 +376,10 @@ class Ghost:
 
         ###### rmove this if u want to test
 
-        # if self.ai:
-        #     next_move = self.ai.get_next_move()
-        #     if next_move:
-        #         self.x, self.y = next_move
+        if self.ai:
+            next_move = self.ai.get_next_move()
+            if next_move:
+                self.x, self.y = next_move
 
 
     def draw(self):
