@@ -126,6 +126,8 @@ class GhostAI:
         return closest_path
 
     def get_next_move(self) -> tuple[int, int] | None:
+        if self.pacman.cheat_mode:
+            return (self.ghost.x, self.ghost.y)
         path = self._find_short_path((self.ghost.x, self.ghost.y))
         if path:
             return path[0]
