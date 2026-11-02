@@ -13,5 +13,5 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-mlx = { path = "mlx/ubuntu/mlx-2.2-py3-none-any.whl" }
+mlx = { path = "mlx/mlx-2.2-py3-none-any.whl" }
 mazegenerator = { path = "mazegenerator/mazegenerator-2.1.0-py3-none-any.whl" }
