@@ -1,5 +1,5 @@
 """Game over / victory screen with name entry for the highscores."""
-from highscores import MAX_NAME_LENGTH, Highscores
+from highscores import Highscores
 
 from .constants import (ESC, KEY_BACKSPACE, KEY_ENTER, KEY_KP_ENTER,
                         TEXT_YELLOW)
@@ -42,7 +42,7 @@ class EndScreen:
         y += self.text.draw_centered(f"Final score: {self.score}",
                                      y, 4) + 80
         y += self.text.draw_centered("Enter your name:", y, 3) + 20
-        shown = self.name + "_" * (MAX_NAME_LENGTH - len(self.name))
+        shown = self.name + "_" * (10 - len(self.name))
         self.text.draw_centered(f"[{shown}]", y, 4, TEXT_YELLOW)
         self.text.draw_centered(
             "Letters, digits, spaces (max 10)  -  ENTER to save, "
@@ -56,7 +56,7 @@ class EndScreen:
             return "skip"
         if key == KEY_BACKSPACE:
             self.name = self.name[:-1]
-        elif 0 < key < 0x110000 and len(self.name) < MAX_NAME_LENGTH:
+        elif 0 < key < 0x110000 and len(self.name) < 10:
             char = chr(key)
             if Highscores.is_valid_char(char) and not (
                     char == " " and not self.name):
