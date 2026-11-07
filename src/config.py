@@ -1,6 +1,6 @@
 import json
 from typing import Any
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 DEFAULT_SIZES = [15, 17, 17, 19, 19, 21, 21, 23, 25, 28]
 MIN_LEVELS = 10
@@ -67,7 +67,8 @@ class Config(BaseModel):
         cls._validate_game_settings(data)
 
     @staticmethod
-    def _clamp(val: Any, min_val: int, max_val: int, default_val: int, name: str) -> int:
+    def _clamp(val: Any, min_val: int,
+               max_val: int, default_val: int, name: str) -> int:
         """Helper to validate type and clamp an integer to min/max bounds."""
         if not isinstance(val, int) or isinstance(val, bool):
             print(f"Warning: config '{name}' = {val} is invalid, "
@@ -87,7 +88,8 @@ class Config(BaseModel):
     def _validate_highscore(cls, data: dict[str, Any]) -> None:
         val = data.get("highscore_filename")
         if val is not None and (not isinstance(val, str) or len(val) == 0):
-            print(f"Warning: config 'highscore_filename' = {val!r} is invalid, using default.")
+            print(f"Warning: config 'highscore_filename' = {val} "
+                  "is invalid, using default.")
             data.pop("highscore_filename", None)
 
     @classmethod
@@ -95,7 +97,8 @@ class Config(BaseModel):
         player = data.get("player")
         if not isinstance(player, dict):
             if player is not None:
-                print("Warning: config 'player' section is invalid, using default.")
+                print("Warning: config 'player' section is "
+                      "invalid, using default.")
             data["player"] = {}
             return
 
@@ -109,7 +112,8 @@ class Config(BaseModel):
         score = data.get("score")
         if not isinstance(score, dict):
             if score is not None:
-                print("Warning: config 'score' section is invalid, using default.")
+                print("Warning: config 'score' section is "
+                      "invalid, using default.")
             data["score"] = {}
             return
 
@@ -119,49 +123,59 @@ class Config(BaseModel):
             ("ghost", 0, 10000, 200),
         ]:
             if key in score:
-                score[key] = cls._clamp(score[key], min_val, max_val, default_val, f"score.{key}")
+                score[key] = cls._clamp(score[key], min_val,
+                                        max_val, default_val, f"score.{key}")
 
     @classmethod
     def _validate_game_settings(cls, data: dict[str, Any]) -> None:
         settings = data.get("game_settings")
         if not isinstance(settings, dict):
             if settings is not None:
-                print("Warning: config 'game_settings' section is invalid, using default.")
+                print("Warning: config 'game_settings' section "
+                      "is invalid, using default.")
             settings = {}
             data["game_settings"] = settings
 
         if "level_max_time" in settings:
             settings["level_max_time"] = cls._clamp(
-                settings["level_max_time"], min_val=1, max_val=3600, default_val=90, name="game_settings.level_max_time"
+                settings["level_max_time"], min_val=1, max_val=3600,
+                default_val=90, name="game_settings.level_max_time"
             )
 
         if "seed" in settings:
             seed_val = settings["seed"]
-            if not isinstance(seed_val, int) or isinstance(seed_val, bool) or seed_val < 0:
-                print(f"Warning: config 'game_settings.seed' = {seed_val!r} is invalid, using default 42.")
+            if (not isinstance(seed_val, int) or
+                    isinstance(seed_val, bool) or seed_val < 0):
+                print(f"Warning: config 'game_settings.seed' = {seed_val} "
+                      "is invalid, using default 42.")
                 settings["seed"] = 42
 
         # validate and pad levels array
         raw_levels = settings.get("levels")
         if not isinstance(raw_levels, list):
             if raw_levels is not None:
-                print("Warning: config 'game_settings.levels' is invalid, resetting levels list.")
+                print("Warning: config 'game_settings.levels' is invalid, "
+                      "resetting levels list.")
             raw_levels = []
             settings["levels"] = raw_levels
 
         cleaned_levels = []
         for i, lvl in enumerate(raw_levels):
             if not isinstance(lvl, dict):
-                print(f"Warning: config level entry #{i} is invalid, using default level dimensions.")
+                print(f"Warning: config level entry {i} is invalid, "
+                      "using default level dimensions.")
                 lvl = {}
 
-            w = cls._clamp(lvl.get("width", 15), min_val=5, max_val=29, default_val=15, name=f"levels[{i}].width")
-            h = cls._clamp(lvl.get("height", 15), min_val=5, max_val=29, default_val=15, name=f"levels[{i}].height")
+            w = cls._clamp(lvl.get("width", 15), min_val=5, max_val=29,
+                           default_val=15, name=f"levels[{i}].width")
+            h = cls._clamp(lvl.get("height", 15), min_val=5, max_val=29,
+                           default_val=15, name=f"levels[{i}].height")
             cleaned_levels.append({"width": w, "height": h})
 
         # Pad remaining levels up to MIN_LEVELS
         if len(cleaned_levels) < MIN_LEVELS:
-            print(f"Warning: config has {len(cleaned_levels)} levels, adding default levels up to {MIN_LEVELS}.")
+            print(f"Warning: config has {len(cleaned_levels)} levels, "
+                  f"adding default levels up to {MIN_LEVELS}.")
             while len(cleaned_levels) < MIN_LEVELS:
                 idx = len(cleaned_levels)
                 size = DEFAULT_SIZES[idx] if idx < len(DEFAULT_SIZES) else 28
@@ -197,7 +211,12 @@ class Config(BaseModel):
             # 1. Handle inside quoted strings (ignore comments inside "...")
             if is_string:
                 result.append(data[i])
-                if data[i] == '"' and data[i - 1] != '\\':
+                if data[i] == '\\':
+                    # Skip the escaped character to prevent false quote triggers
+                    if i + 1 < length:
+                        i += 1
+                        result.append(data[i])
+                elif data[i] == '"':
                     is_string = False
                 i += 1
                 continue
