@@ -1,47 +1,40 @@
 import json
 from typing import Any
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
 DEFAULT_SIZES = [15, 17, 17, 19, 19, 21, 21, 23, 25, 28]
 MIN_LEVELS = 10
-MAX_FIX_ROUNDS = 50
 
 
 class LevelConfig(BaseModel):
     """Size of one maze."""
-    model_config = ConfigDict(extra="ignore")
     width: int = Field(default=15, ge=5, le=29)
     height: int = Field(default=15, ge=5, le=29)
 
 
 class GameSettings(BaseModel):
     """General game parameters."""
-    model_config = ConfigDict(extra="ignore")
     level_max_time: int = Field(default=90, ge=1, le=3600)
     seed: int = Field(default=42, ge=0)
     levels: list[LevelConfig] = Field(
         default_factory=lambda: [
-            LevelConfig(width=s, height=s) for s in DEFAULT_SIZES]
-    )
+            LevelConfig(width=s, height=s) for s in DEFAULT_SIZES])
 
 
 class PlayerConfig(BaseModel):
     """Player parameters."""
-    model_config = ConfigDict(extra="ignore")
     lives: int = Field(default=3, ge=1, le=99)
 
 
 class ScoreConfig(BaseModel):
     """Points per event."""
-    model_config = ConfigDict(extra="ignore")
     pacgum: int = Field(default=10, ge=0)
     super_pacgum: int = Field(default=50, ge=0)
     ghost: int = Field(default=200, ge=0)
 
 
 class Config(BaseModel):
-    """Whole game configuration. Use Config.start(filename)."""
-    model_config = ConfigDict(extra="ignore")
+    """Whole game configuration."""
     highscore_filename: str = Field(default="highscores.json", min_length=1)
     game_settings: GameSettings = Field(default_factory=GameSettings)
     player: PlayerConfig = Field(default_factory=PlayerConfig)
@@ -49,90 +42,132 @@ class Config(BaseModel):
 
     @classmethod
     def start(cls, filename: str) -> "Config":
-        """Entry point: read the file and build the config safely.
-
-        Every invalid value is fixed one by one (clamped to its limit or
-        replaced by its default) and a warning is printed, so one bad
-        value never resets the whole configuration.
-        """
+        """Entry point: reads file, normalizes and clamps
+          all values upfront, then builds config."""
         data = cls.read_file(filename)
-        cls.fill_levels(data)
 
-        for _ in range(MAX_FIX_ROUNDS):
-            try:
-                return cls.model_validate(data)
-            except ValidationError as error:
-                for err in error.errors():
-                    cls.fix_value(data, err)
-            except Exception as error:
-                print(f"Warning: invalid configuration ({error}), "
-                      "using default values.")
-                return cls()
-        print("Warning: configuration could not be repaired, "
-              "using default values.")
-        return cls()
+        # 1. validate/clamp values and fill defaults in-place before validation
+        cls.validate_and_fill(data)
+
+        # 2. Safely parse into Pydantic model without tracebacks
+        try:
+            return cls.model_validate(data)
+        except Exception as error:
+            print(f"Warning: Unexpected error loading config ({error}), "
+                  "using standard default configuration.")
+            return cls()
+
+    @classmethod
+    def validate_and_fill(cls, data: dict[str, Any]) -> None:
+        """Normalizes sections, clamps out-of-range
+          values, and fills default levels."""
+        cls._validate_highscore(data)
+        cls._validate_player(data)
+        cls._validate_score(data)
+        cls._validate_game_settings(data)
 
     @staticmethod
-    def fill_levels(data: dict[str, Any]) -> None:
-        """Add default levels until there are at least MIN_LEVELS."""
+    def _clamp(val: Any, min_val: int, max_val: int, default_val: int, name: str) -> int:
+        """Helper to validate type and clamp an integer to min/max bounds."""
+        if not isinstance(val, int) or isinstance(val, bool):
+            print(f"Warning: config '{name}' = {val} is invalid, "
+                  f"using default {default_val}.")
+            return default_val
+        if val < min_val:
+            print(f"Warning: config '{name}' = {val} is too small, "
+                  f"clamped to {min_val}.")
+            return default_val
+        if val > max_val:
+            print(f"Warning: config '{name}' = {val} is too large, "
+                  f"clamped to {max_val}.")
+            return default_val
+        return val
+
+    @classmethod
+    def _validate_highscore(cls, data: dict[str, Any]) -> None:
+        val = data.get("highscore_filename")
+        if val is not None and (not isinstance(val, str) or len(val) == 0):
+            print(f"Warning: config 'highscore_filename' = {val!r} is invalid, using default.")
+            data.pop("highscore_filename", None)
+
+    @classmethod
+    def _validate_player(cls, data: dict[str, Any]) -> None:
+        player = data.get("player")
+        if not isinstance(player, dict):
+            if player is not None:
+                print("Warning: config 'player' section is invalid, using default.")
+            data["player"] = {}
+            return
+
+        if "lives" in player:
+            player["lives"] = cls._clamp(
+                player["lives"],
+                min_val=1, max_val=99, default_val=3, name="player.lives")
+
+    @classmethod
+    def _validate_score(cls, data: dict[str, Any]) -> None:
+        score = data.get("score")
+        if not isinstance(score, dict):
+            if score is not None:
+                print("Warning: config 'score' section is invalid, using default.")
+            data["score"] = {}
+            return
+
+        for key, min_val, max_val, default_val in [
+            ("pacgum", 0, 10000, 10),
+            ("super_pacgum", 0, 10000, 50),
+            ("ghost", 0, 10000, 200),
+        ]:
+            if key in score:
+                score[key] = cls._clamp(score[key], min_val, max_val, default_val, f"score.{key}")
+
+    @classmethod
+    def _validate_game_settings(cls, data: dict[str, Any]) -> None:
         settings = data.get("game_settings")
         if not isinstance(settings, dict):
-            return
+            if settings is not None:
+                print("Warning: config 'game_settings' section is invalid, using default.")
+            settings = {}
+            data["game_settings"] = settings
+
+        if "level_max_time" in settings:
+            settings["level_max_time"] = cls._clamp(
+                settings["level_max_time"], min_val=1, max_val=3600, default_val=90, name="game_settings.level_max_time"
+            )
+
+        if "seed" in settings:
+            seed_val = settings["seed"]
+            if not isinstance(seed_val, int) or isinstance(seed_val, bool) or seed_val < 0:
+                print(f"Warning: config 'game_settings.seed' = {seed_val!r} is invalid, using default 42.")
+                settings["seed"] = 42
+
+        # validate and pad levels array
         raw_levels = settings.get("levels")
         if not isinstance(raw_levels, list):
-            return
-        if len(raw_levels) < MIN_LEVELS:
-            print(f"Warning: config has {len(raw_levels)} levels, "
-                  f"adding default levels up to {MIN_LEVELS}.")
-        while len(raw_levels) < MIN_LEVELS:
-            idx = len(raw_levels)
-            size = DEFAULT_SIZES[idx] if idx < len(DEFAULT_SIZES) else 28
-            raw_levels.append({"width": size, "height": size})
+            if raw_levels is not None:
+                print("Warning: config 'game_settings.levels' is invalid, resetting levels list.")
+            raw_levels = []
+            settings["levels"] = raw_levels
 
-    @staticmethod
-    def fix_value(data: dict[str, Any], err: Any) -> None:
-        """Clamp or remove the value described by a pydantic error."""
-        loc = err.get("loc", ())
-        if not loc:
-            data.clear()
-            return
-        name = ".".join(str(part) for part in loc)
-        parent: Any = data
-        try:
-            for part in loc[:-1]:
-                parent = parent[part]
-            last = loc[-1]
-            value = parent[last]
-        except (KeyError, IndexError, TypeError):
-            # The parent itself is broken: drop the top-level key.
-            data.pop(loc[0], None)
-            print(f"Warning: config '{loc[0]}' is invalid, using defaults.")
-            return
+        cleaned_levels = []
+        for i, lvl in enumerate(raw_levels):
+            if not isinstance(lvl, dict):
+                print(f"Warning: config level entry #{i} is invalid, using default level dimensions.")
+                lvl = {}
 
-        ctx = err.get("ctx") or {}
-        kind = err.get("type", "")
-        if kind in ("greater_than_equal", "greater_than") and "ge" in ctx:
-            new_value: Any = ctx["ge"]
-        elif kind in ("greater_than_equal", "greater_than") and "gt" in ctx:
-            new_value = ctx["gt"] + 1
-        elif kind in ("less_than_equal", "less_than") and "le" in ctx:
-            new_value = ctx["le"]
-        elif kind in ("less_than_equal", "less_than") and "lt" in ctx:
-            new_value = ctx["lt"] - 1
-        else:
-            new_value = None
+            w = cls._clamp(lvl.get("width", 15), min_val=5, max_val=29, default_val=15, name=f"levels[{i}].width")
+            h = cls._clamp(lvl.get("height", 15), min_val=5, max_val=29, default_val=15, name=f"levels[{i}].height")
+            cleaned_levels.append({"width": w, "height": h})
 
-        if new_value is not None:
-            parent[last] = new_value
-            print(f"Warning: config '{name}' = {value!r} is out of range, "
-                  f"clamped to {new_value}.")
-        elif isinstance(parent, list):
-            parent[last] = {}
-            print(f"Warning: config '{name}' is invalid, using default level.")
-        else:
-            del parent[last]
-            print(f"Warning: config '{name}' = {value!r} is invalid "
-                  f"({err.get('msg', 'bad value')}), using default.")
+        # Pad remaining levels up to MIN_LEVELS
+        if len(cleaned_levels) < MIN_LEVELS:
+            print(f"Warning: config has {len(cleaned_levels)} levels, adding default levels up to {MIN_LEVELS}.")
+            while len(cleaned_levels) < MIN_LEVELS:
+                idx = len(cleaned_levels)
+                size = DEFAULT_SIZES[idx] if idx < len(DEFAULT_SIZES) else 28
+                cleaned_levels.append({"width": size, "height": size})
+
+        settings["levels"] = cleaned_levels
 
     @classmethod
     def read_file(cls, filename: str) -> dict[str, Any]:
@@ -144,7 +179,7 @@ class Config(BaseModel):
                 if isinstance(data, dict):
                     return data
                 print("Warning: config root must be a JSON object.")
-        except (OSError, UnicodeDecodeError) as error:
+        except OSError as error:
             print(f"Warning: Cannot read '{filename}': {error}")
         except json.JSONDecodeError as error:
             print(f"Warning: Invalid JSON in '{filename}' "
