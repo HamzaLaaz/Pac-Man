@@ -8,7 +8,6 @@ dependencies = [
     "bdfparser>=2.2.0",
     "mazegenerator",
     "mlx",
-    "pydantic>=2.14.1",
     "pytest>=9.1.1",
 ]
 
