@@ -1,7 +1,11 @@
-from .classes.entities import Ghost, Pacman
-from collections import deque
-from .constants import N, S, E, W
 import random
+from collections import deque
+from typing import TYPE_CHECKING
+from .classes.entities import Ghost, Pacman
+from .constants import N, S, E, W
+
+if TYPE_CHECKING:
+    from .game_screen import GameScreen
 
 
 class GhostAI:
@@ -32,7 +36,7 @@ class GhostAI:
                 return (rx, ry)
 
     def _get_flee_target(self) -> tuple[int, int]:
-        """Calculate a target in the opposite direction of Pac-Man (Scared Mode)."""
+        """Target in the opposite direction of Pac-Man (Scared Mode)."""
         flee_x = self.ghost.x + (self.ghost.x - self.pacman.pacman_x) * 2
         flee_y = self.ghost.y + (self.ghost.y - self.pacman.pacman_y) * 2
         target_x = max(0, min(self.screen.maze_width - 1, flee_x))
@@ -60,10 +64,14 @@ class GhostAI:
         # 3. Pinky: Target 4 tiles ahead of Pac-Man
         if self.ghost.name == "pinky":
             target_x = max(
-                0, min(self.screen.maze_width - 1, self.pacman.pacman_x + dx * 4)
+                0,
+                min(self.screen.maze_width - 1,
+                    self.pacman.pacman_x + dx * 4)
             )
             target_y = max(
-                0, min(self.screen.maze_height - 1, self.pacman.pacman_y + dy * 4)
+                0,
+                min(self.screen.maze_height - 1,
+                    self.pacman.pacman_y + dy * 4)
             )
             return (target_x, target_y)
         # 4. Inky: Pivot vector using Blinky's position
@@ -81,7 +89,7 @@ class GhostAI:
                 0, min(self.screen.maze_height - 1, self.blinky.y + vec_y * 2)
             )
             return (target_x, target_y)
-        # 5. Clyde: Chase like Red (Blinky) if > 8 cells away, run away like Scared mode if <= 8 cells
+        # 5. Clyde: chase like Blinky if far away, else flee like scared
         if self.ghost.name == "clyde":
             dist = abs(self.ghost.x - self.pacman.pacman_x) + abs(
                 self.ghost.y - self.pacman.pacman_y
@@ -94,10 +102,13 @@ class GhostAI:
                 return self._get_flee_target()
         return (self.pacman.pacman_x, self.pacman.pacman_y)
 
-    def _find_short_path(self, start: tuple[int, int]) -> list[tuple[int, int]]:
+    def _find_short_path(
+        self, start: tuple[int, int]
+    ) -> list[tuple[int, int]]:
         moves = [(0, -1, N), (1, 0, E), (0, 1, S), (-1, 0, W)]
         goal = self.get_target()
-        queue = deque([(start, [])])
+        item_type = tuple[tuple[int, int], list[tuple[int, int]]]
+        queue: deque[item_type] = deque([(start, [])])
         visited = {start}
         closest_path: list[tuple[int, int]] = []
         min_dist = float("inf")
@@ -112,7 +123,11 @@ class GhostAI:
                 return path
             for dx, dy, wall in moves:
                 nx, ny = x + dx, y + dy
-                if not (0 <= nx < self.screen.maze_width and 0 <= ny < self.screen.maze_height):
+                in_bounds = (
+                    0 <= nx < self.screen.maze_width
+                    and 0 <= ny < self.screen.maze_height
+                )
+                if not in_bounds:
                     continue
                 cell = self.screen.maze_grid[y][x]
                 if isinstance(cell, str):
@@ -122,14 +137,16 @@ class GhostAI:
                 if (nx, ny) not in visited:
                     visited.add((nx, ny))
                     queue.append(((nx, ny), path + [(nx, ny)]))
-        # If goal was unreachable (inside a wall), return the path to the closest walkable tile
+        # If goal was unreachable (inside a wall), return the path to the
+        # closest walkable tile
         return closest_path
 
     def get_next_move(self) -> tuple[int, int] | None:
         path = self._find_short_path((self.ghost.x, self.ghost.y))
         if path:
             return path[0]
-        # Fallback: keep moving to any open adjacent tile if standing directly on target
+        # Fallback: keep moving to any open adjacent tile if standing
+        # directly on target
         moves = [(0, -1, N), (1, 0, E), (0, 1, S), (-1, 0, W)]
         x, y = self.ghost.x, self.ghost.y
         for dx, dy, wall in moves:

@@ -25,3 +25,7 @@ dev = [
 mypy_path = "src"
 explicit_package_bases = true
 exclude = ["^\\.venv/"]
+
+[[tool.mypy.overrides]]
+module = ["mlx.*", "bdfparser.*", "mazegenerator.*"]
+ignore_missing_imports = true

@@ -17,8 +17,6 @@ from screens.mlx_class import MlxClass
 from screens.pause_screen import PauseScreen
 from screens.text import TextDrawer
 
-
-
 frame_duration = 1.0 / FPS
 last_time = time.perf_counter()
 config: Config
@@ -34,7 +32,7 @@ instructions_screen: InstructionsScreen
 # Game state
 current_screen = "menu"
 # to redraw static screens
-redraw = True 
+redraw = True
 current_level = 0
 game_screen: GameScreen | None = None
 
@@ -46,7 +44,9 @@ def switch_screen(name: str) -> None:
     redraw = True
 
 
-def create_level(level_index: int, score: int = 0, lives: int | None = None) -> GameScreen | None:
+def create_level(
+    level_index: int, score: int = 0, lives: int | None = None
+) -> GameScreen | None:
     """
     Build a level from the config
     """
@@ -145,6 +145,7 @@ def on_mouse(button: int, x: int, y: int, param: Any) -> None:
         return
     action = menu.handle_mouse(x, y)
     if action == "exit":
+        assert mlx_class is not None
         mlx_class.mlx.mlx_loop_exit(mlx_class.mlx_ptr)
     elif action == "start_game":
         start_new_game()
@@ -159,6 +160,7 @@ def on_key(key: int, param: Any) -> None:
     global redraw
     if current_screen == "menu":
         if key == ESC:
+            assert mlx_class is not None
             mlx_class.mlx.mlx_loop_exit(mlx_class.mlx_ptr)
     elif current_screen == "game" and game_screen is not None:
         if key in (ESC, ord("p")):
@@ -194,6 +196,7 @@ def on_key(key: int, param: Any) -> None:
 
 def on_close(param: Any) -> None:
     """Quit when the window is closed."""
+    assert mlx_class is not None
     mlx_class.mlx.mlx_loop_exit(mlx_class.mlx_ptr)
 
 

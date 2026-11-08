@@ -1,7 +1,7 @@
-from .mlx_class import MlxClass
-from .constants import *
 import time
-
+from typing import Any
+from .constants import ACTIONS, BTN_HEIGHT, BTN_WIDTH, GAP, HEIGHT, WIDTH
+from .mlx_class import MlxClass
 
 
 class Button:
@@ -15,11 +15,12 @@ class Button:
 
     def contains(self, px: int, py: int) -> bool:
         """Return whether a point is inside the button."""
-        return (self.x <= px <= self.x + self.width and self.y <= py <= self.y + self.height)
+        return (self.x <= px <= self.x + self.width
+                and self.y <= py <= self.y + self.height)
 
 
 class MainMenu:
-    def __init__(self, mlx_class: MlxClass):
+    def __init__(self, mlx_class: MlxClass) -> None:
         self.mlx = mlx_class.mlx
         self.mlx_ptr = mlx_class.mlx_ptr
         self.mlx_win = mlx_class.win
@@ -28,47 +29,53 @@ class MainMenu:
         self.width = mlx_class.width
         self.height = mlx_class.height
         self.selected = 0
-        self.hover = -1                      # index of hovered button, -1 = none
+        self.hover = -1               # index of hovered button, -1 = none
         self.index = 0
-        self.title = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/pac-man_title.xpm")
-        self.background = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/background.xpm")
-        self.start_open_button = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/start_open.xpm")        
-        self.start_closed_button = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/start_closed.xpm")        
-        self.high_scorers = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/high_scorers.xpm")
-        self.instructions = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/instructions.xpm")
-        self.exit = self.mlx.mlx_xpm_file_to_image(self.mlx_ptr, "assets/main-menu/exit.xpm")
+        self.title = self.mlx.mlx_xpm_file_to_image(
+            self.mlx_ptr, "assets/main-menu/pac-man_title.xpm")
+        self.background = self.mlx.mlx_xpm_file_to_image(
+            self.mlx_ptr, "assets/main-menu/background.xpm")
+        self.start_open_button = self.mlx.mlx_xpm_file_to_image(
+            self.mlx_ptr, "assets/main-menu/start_open.xpm")
+        self.start_closed_button = self.mlx.mlx_xpm_file_to_image(
+            self.mlx_ptr, "assets/main-menu/start_closed.xpm")
+        self.high_scorers = self.mlx.mlx_xpm_file_to_image(
+            self.mlx_ptr, "assets/main-menu/high_scorers.xpm")
+        self.instructions = self.mlx.mlx_xpm_file_to_image(
+            self.mlx_ptr, "assets/main-menu/instructions.xpm")
+        self.exit = self.mlx.mlx_xpm_file_to_image(
+            self.mlx_ptr, "assets/main-menu/exit.xpm")
         _, tw, th = self.title
         self.title_x = (self.width - tw) // 2
         self.title_y = int(self.height * 0.08)
         x = (self.width - BTN_WIDTH) // 2
         y = self.title_y + th
-        self.buttons = []
+        self.buttons: list[Button] = []
         for _ in ACTIONS:
             self.buttons.append(Button(x, y, BTN_WIDTH, BTN_HEIGHT))
             y += BTN_HEIGHT + GAP
-        
 
-    
-    def put_back(self):
+    def put_back(self) -> None:
         img, _, _ = self.background
-        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, 0, 0)
+        self.mlx.mlx_put_image_to_window(
+            self.mlx_ptr, self.mlx_win, img, 0, 0)
 
-              
-    def put_title(self):
+    def put_title(self) -> None:
         img, w, h = self.title
         self.x_start = (WIDTH - w) // 2
-        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, self.x_start, int(HEIGHT * 0.08))
+        self.mlx.mlx_put_image_to_window(
+            self.mlx_ptr, self.mlx_win, img, self.x_start,
+            int(HEIGHT * 0.08))
         self.y_start = int(HEIGHT * 0.08) + h
         self.start_button = Button(self.x_start, self.y_start, 581, 146)
 
-    
-    def draw_buttons(self):
+    def draw_buttons(self) -> None:
         width = 581
         height = 146
         self.x_start = (WIDTH - width) // 2
         holder = self.y_start
         # start
-        if self.hover == False:
+        if self.hover == 0:
             if self.index % 2 == 0:
                 time.sleep(0.1)
                 img, w, h = self.start_closed_button
@@ -80,28 +87,31 @@ class MainMenu:
         else:
             img, w, h = self.start_open_button
 
-        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, self.x_start, holder)
+        self.mlx.mlx_put_image_to_window(
+            self.mlx_ptr, self.mlx_win, img, self.x_start, holder)
         holder += height + 5
         # highscorers
         img, w, h = self.high_scorers
-        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, self.x_start, holder)
+        self.mlx.mlx_put_image_to_window(
+            self.mlx_ptr, self.mlx_win, img, self.x_start, holder)
         holder += height + GAP
         # instructions
         img, w, h = self.instructions
-        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, self.x_start, holder)
+        self.mlx.mlx_put_image_to_window(
+            self.mlx_ptr, self.mlx_win, img, self.x_start, holder)
         holder += height + GAP
         # exit
         img, w, h = self.exit
-        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.mlx_win, img, self.x_start, holder)
+        self.mlx.mlx_put_image_to_window(
+            self.mlx_ptr, self.mlx_win, img, self.x_start, holder)
         holder += height + GAP
 
-
-    def render(self):
+    def render(self) -> None:
         self.put_back()
         self.put_title()
         self.draw_buttons()
-    
-    def on_motion(self):
+
+    def on_motion(self) -> None:
         """
          self.x <= px <= self.x + self.width
             and self.y <= py <= self.y + self.height
@@ -111,15 +121,14 @@ class MainMenu:
         for i, btn in enumerate(self.buttons):
             if btn.contains(mx, my):
                 self.hover = i
-    
-    def handle_mouse(self, x, y):
+
+    def handle_mouse(self, x: int, y: int) -> str | None:
         for btn, action in zip(self.buttons, ACTIONS):
             if btn.contains(x, y):
                 return action
         return None
-        
 
-    def on_key(self, keycode, _):
+    def on_key(self, keycode: int, _: Any) -> None:
         if keycode == 65307:    # esc
             self.mlx.mlx_loop_exit(self.mlx_ptr)
         self.render()
