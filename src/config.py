@@ -49,7 +49,8 @@ class Config:
 
     @classmethod
     def start(cls, filename: str) -> "Config":
-        """Entry point: reads file, sanitizes values upfront, and instantiates objects."""
+        """Entry point: reads file, sanitizes values upfront,
+          and instantiates objects."""
         data = cls.read_file(filename)
 
         # 1. Validate, clamp values, and pad levels in-place
@@ -83,9 +84,9 @@ class Config:
         # Game Settings & Levels
         g_data = data.get("game_settings", {})
         levels_list = [
-            LevelConfig(width=lvl.get("width", 15), height=lvl.get("height", 15))
-            for lvl in g_data.get("levels", [])
-        ]
+            LevelConfig(
+                width=lvl.get("width", 15), height=lvl.get("height", 15))
+            for lvl in g_data.get("levels", [])]
         game_settings_obj = GameSettings(
             level_max_time=g_data.get("level_max_time", 90),
             seed=g_data.get("seed", 42),
@@ -101,7 +102,8 @@ class Config:
 
     @classmethod
     def validate_and_fill(cls, data: dict[str, Any]) -> None:
-        """Normalizes sections, clamps out-of-range values, and fills default levels."""
+        """Normalizes sections, clamps out-of-range values,
+          and fills default levels."""
         cls._validate_highscore(data)
         cls._validate_player(data)
         cls._validate_score(data)
