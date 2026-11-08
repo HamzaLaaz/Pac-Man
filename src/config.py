@@ -1,66 +1,107 @@
 import json
+from dataclasses import dataclass, field
 from typing import Any
-from pydantic import BaseModel, Field
 
 DEFAULT_SIZES = [15, 17, 17, 19, 19, 21, 21, 23, 25, 28]
 MIN_LEVELS = 10
 
 
-class LevelConfig(BaseModel):
+@dataclass
+class LevelConfig:
     """Size of one maze."""
-    width: int = Field(default=15, ge=5, le=29)
-    height: int = Field(default=15, ge=5, le=29)
+    width: int = 15
+    height: int = 15
 
 
-class GameSettings(BaseModel):
+@dataclass
+class GameSettings:
     """General game parameters."""
-    level_max_time: int = Field(default=90, ge=1, le=3600)
-    seed: int = Field(default=42, ge=0)
-    levels: list[LevelConfig] = Field(
+    level_max_time: int = 90
+    seed: int = 42
+    levels: list[LevelConfig] = field(
         default_factory=lambda: [
-            LevelConfig(width=s, height=s) for s in DEFAULT_SIZES])
+            LevelConfig(width=s, height=s) for s in DEFAULT_SIZES
+        ]
+    )
 
 
-class PlayerConfig(BaseModel):
+@dataclass
+class PlayerConfig:
     """Player parameters."""
-    lives: int = Field(default=3, ge=1, le=99)
+    lives: int = 3
 
 
-class ScoreConfig(BaseModel):
+@dataclass
+class ScoreConfig:
     """Points per event."""
-    pacgum: int = Field(default=10, ge=0)
-    super_pacgum: int = Field(default=50, ge=0)
-    ghost: int = Field(default=200, ge=0)
+    pacgum: int = 10
+    super_pacgum: int = 50
+    ghost: int = 200
 
 
-class Config(BaseModel):
+@dataclass
+class Config:
     """Whole game configuration."""
-    highscore_filename: str = Field(default="highscores.json", min_length=1)
-    game_settings: GameSettings = Field(default_factory=GameSettings)
-    player: PlayerConfig = Field(default_factory=PlayerConfig)
-    score: ScoreConfig = Field(default_factory=ScoreConfig)
+    highscore_filename: str = "highscores.json"
+    game_settings: GameSettings = field(default_factory=GameSettings)
+    player: PlayerConfig = field(default_factory=PlayerConfig)
+    score: ScoreConfig = field(default_factory=ScoreConfig)
 
     @classmethod
     def start(cls, filename: str) -> "Config":
-        """Entry point: reads file, normalizes and clamps
-          all values upfront, then builds config."""
+        """Entry point: reads file, sanitizes values upfront, and instantiates objects."""
         data = cls.read_file(filename)
 
-        # 1. validate/clamp values and fill defaults in-place before validation
+        # 1. Validate, clamp values, and pad levels in-place
         cls.validate_and_fill(data)
 
-        # 2. Safely parse into Pydantic model without tracebacks
+        # 2. Convert dictionary directly into Config dataclasses
         try:
-            return cls.model_validate(data)
+            return cls._from_dict(data)
         except Exception as error:
             print(f"Warning: Unexpected error loading config ({error}), "
                   "using standard default configuration.")
             return cls()
 
     @classmethod
+    def _from_dict(cls, data: dict[str, Any]) -> "Config":
+        """Build Config dataclass tree directly from clean dictionary data."""
+        highscore = data.get("highscore_filename", "highscores.json")
+
+        # Player
+        p_data = data.get("player", {})
+        player_obj = PlayerConfig(lives=p_data.get("lives", 3))
+
+        # Score
+        s_data = data.get("score", {})
+        score_obj = ScoreConfig(
+            pacgum=s_data.get("pacgum", 10),
+            super_pacgum=s_data.get("super_pacgum", 50),
+            ghost=s_data.get("ghost", 200),
+        )
+
+        # Game Settings & Levels
+        g_data = data.get("game_settings", {})
+        levels_list = [
+            LevelConfig(width=lvl.get("width", 15), height=lvl.get("height", 15))
+            for lvl in g_data.get("levels", [])
+        ]
+        game_settings_obj = GameSettings(
+            level_max_time=g_data.get("level_max_time", 90),
+            seed=g_data.get("seed", 42),
+            levels=levels_list,
+        )
+
+        return cls(
+            highscore_filename=highscore,
+            game_settings=game_settings_obj,
+            player=player_obj,
+            score=score_obj,
+        )
+
+    @classmethod
     def validate_and_fill(cls, data: dict[str, Any]) -> None:
-        """Normalizes sections, clamps out-of-range
-          values, and fills default levels."""
+        """Normalizes sections, clamps out-of-range values, and fills default levels."""
         cls._validate_highscore(data)
         cls._validate_player(data)
         cls._validate_score(data)
@@ -138,7 +179,7 @@ class Config(BaseModel):
 
         if "level_max_time" in settings:
             settings["level_max_time"] = cls._clamp(
-                settings["level_max_time"], min_val=1, max_val=3600,
+                settings["level_max_time"], min_val=60, max_val=3600,
                 default_val=90, name="game_settings.level_max_time"
             )
 
@@ -150,7 +191,7 @@ class Config(BaseModel):
                       "is invalid, using default 42.")
                 settings["seed"] = 42
 
-        # validate and pad levels array
+        # Validate and pad levels array
         raw_levels = settings.get("levels")
         if not isinstance(raw_levels, list):
             if raw_levels is not None:
@@ -166,9 +207,9 @@ class Config(BaseModel):
                       "using default level dimensions.")
                 lvl = {}
 
-            w = cls._clamp(lvl.get("width", 15), min_val=5, max_val=29,
+            w = cls._clamp(lvl.get("width", 15), min_val=14, max_val=29,
                            default_val=15, name=f"levels[{i}].width")
-            h = cls._clamp(lvl.get("height", 15), min_val=5, max_val=29,
+            h = cls._clamp(lvl.get("height", 15), min_val=14, max_val=29,
                            default_val=15, name=f"levels[{i}].height")
             cleaned_levels.append({"width": w, "height": h})
 
@@ -212,7 +253,6 @@ class Config(BaseModel):
             if is_string:
                 result.append(data[i])
                 if data[i] == '\\':
-                    # Skip the escaped character to prevent false quote triggers
                     if i + 1 < length:
                         i += 1
                         result.append(data[i])
@@ -241,7 +281,8 @@ class Config(BaseModel):
                     if data[i] == '\n':
                         result.append('\n')
                     i += 1
-                i += 2  # Skip closing '*/'
+                if i < length:
+                    i += 2  # Skip closing '*/'
                 continue
             # 4. Keep normal JSON characters
             result.append(data[i])
