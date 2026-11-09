@@ -206,7 +206,7 @@ def main(argv: list[str]) -> int:
     global pause_screen, end_screen, highscores_screen, instructions_screen
 
     if len(argv) != 1:
-        print("Usage: python3 src/main.py  <config.json>")
+        print("Usage: python3 pac-man.py <config.json>")
         return 1
     try:
         config = Config.start(argv[0])

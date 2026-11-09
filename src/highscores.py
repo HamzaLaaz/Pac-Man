@@ -17,10 +17,11 @@ class Highscores:
     @staticmethod
     def is_valid_char(char: str) -> bool:
         """Return True if `char` is allowed in a player name."""
-        if (len(char) == 1 and char.isascii() and (
-            char.isalnum() or char == " ")):
-            return True
-        return False
+        return (
+            len(char) == 1
+            and char.isascii()
+            and (char.isalnum() or char == " ")
+        )
 
     @classmethod
     def clean_name(cls, name: str) -> str:
@@ -30,7 +31,7 @@ class Highscores:
         return cleaned if cleaned else "PLAYER"
 
     def _add_unique(self, cleaned_name: str, score: int) -> bool:
-        """Helper to append an entry only if (name, score) is not already present."""
+        """Append (name, score) only if it is not already present."""
         entry = (cleaned_name, score)
         if entry not in self.entries:
             self.entries.append(entry)

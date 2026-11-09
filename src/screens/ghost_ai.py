@@ -1,7 +1,11 @@
-from .classes.entities import Ghost, Pacman
-from collections import deque
-from .constants import N, S, E, W
 import random
+from collections import deque
+from typing import TYPE_CHECKING
+from .classes.entities import Ghost, Pacman
+from .constants import N, S, E, W
+
+if TYPE_CHECKING:
+    from .game_screen import GameScreen
 
 
 class GhostAI:
@@ -95,7 +99,8 @@ class GhostAI:
             self, start: tuple[int, int]) -> list[tuple[int, int]]:
         moves = [(0, -1, N), (1, 0, E), (0, 1, S), (-1, 0, W)]
         goal = self.get_target()
-        queue = deque([(start, [])])
+        item_type = tuple[tuple[int, int], list[tuple[int, int]]]
+        queue: deque[item_type] = deque([(start, [])])
         visited = {start}
         closest_path: list[tuple[int, int]] = []
         min_dist = float("inf")

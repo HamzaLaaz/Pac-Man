@@ -6,10 +6,10 @@ install:
 	uv sync
 
 run:
-	uv run python3 src/main.py $(CONFIG)
+	uv run python3 pac-man.py $(CONFIG)
 
 debug:
-	uv run python3 -m pdb src/main.py  $(CONFIG)
+	uv run python3 -m pdb pac-man.py $(CONFIG)
 
 clean:
 	@rm -rf */__pycache__ */*/__pycache__ */*/*/__pycache__ __pycache__
