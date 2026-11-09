@@ -12,6 +12,7 @@ class Highscores:
         """Create the table and load it from `filename`."""
         self.filename = filename
         self.entries: list[tuple[str, int]] = []
+        self.load_file()
 
     @staticmethod
     def is_valid_char(char: str) -> bool:
