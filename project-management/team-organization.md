@@ -8,7 +8,7 @@ Based on the commit history, the work split naturally into two tracks
 that later merged:
 
 **wkerdad** — project setup and tooling (`uv`, the `mlx`/`mazegenerator`
-package wiring, the MLX wrapper), game assets, the main menu, the
+package wiring), game assets, the main menu, the
 entity-rendering code (Pac-Man, ghosts, pacgums all drawn on screen),
 and — once the core loop was stable — the rest of the UI in one focused
 push: pause screen, instructions screen, highscores screen, end screen,

@@ -30,7 +30,7 @@ later rewritten with plain `@dataclass` definitions and manual
 clamping/validation functions (`Config._clamp`, `_validate_*`). This
 removed a runtime dependency, kept the validation logic fully visible
 and testable, and made the strict `mypy` pass easier, since `pydantic`'s
-own typing interacts awkwardly with `mypy --strict` in some versions.
+own typing interacts awkwardly with `mypy --strict` in some versions, also to simplify packaging.
 
 ## Two branches running in parallel from the start
 

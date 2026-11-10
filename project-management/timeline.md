@@ -1,7 +1,7 @@
 # Timeline (Gantt)
 
 The project ran from **2026-09-23** to **2026-11-09** (about seven
-weeks), in six phases (0–5), plus a final phase still remaining
+weeks), in six phases (0–6), plus a final phase still remaining
 (packaging & deployment). Dates are taken directly from `git log`;
 GitHub renders the chart below natively.
 

@@ -1,9 +1,6 @@
 # Acceptance Test Plan
 
-No automated test suite exists yet (see
-[`progress-tracking.md`](progress-tracking.md)). Features were verified
-manually against the subject's requirements, feature by feature, each
-time they were implemented or changed. This is a record of what was
+This is a record of what was
 checked and the bugs that testing actually caught, taken from the fix
 commits in git history.
 

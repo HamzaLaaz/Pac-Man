@@ -25,14 +25,4 @@ for the dated Gantt view of the same work.
 - [x] Root entry point: `python3 pac-man.py config.json`
 - [x] `README.md` and project-management documentation
 - [x] Highscore load-on-init fix, ghost speed tuning
-
-## In Progress
-
-*(nothing currently in progress — the board is clean as of the last commit)*
-
-## To Do / Backlog
-
-- [ ] Packaging for a public gaming platform — plan written in
-      [`packaging-guide.md`](packaging-guide.md) (itch.io, Linux-only
-      build), not executed yet
-- [ ] Packaging script/spec checked into the repository root
+- [x] Packaging the codebase

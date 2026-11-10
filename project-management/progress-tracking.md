@@ -63,12 +63,6 @@ ghost speed tuning) — showing that "hardening" is not strictly
 sequential: bugs from earlier phases can resurface and get fixed
 alongside newer work.
 
-## Not yet done
+## Phase 6 — packaging
 
-- **Deployment / packaging** to a public gaming platform (Steam/Itch.io
-  or similar) and the packaging script required by the subject have not
-  been started yet — explicitly deferred to a later phase.
-- **Automated tests** (`pytest`/`unittest`) are not part of the
-  repository; verification so far has been manual (see
-  [`acceptance-tests.md`](acceptance-tests.md)) plus the static
-  guarantees from `flake8`/`mypy --strict`.
+- **Deployment / packaging** to a public gaming platform (Itch.io in our case since it's free lol) and adding it to the make file
