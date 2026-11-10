@@ -5,17 +5,17 @@ Usage: python3 pac-man.py <config.json>
 import sys
 import time
 from typing import Any
-from config import Config
-from highscores import Highscores
-from screens.constants import ESC, FPS, HEIGHT, WIDTH, WINDOW_CLOSE_EVENT
-from screens.end_screen import EndScreen
-from screens.game_screen import GameScreen
-from screens.highscores_screen import HighscoresScreen
-from screens.instructions_screen import InstructionsScreen
-from screens.main_menu import MainMenu
-from screens.mlx_class import MlxClass
-from screens.pause_screen import PauseScreen
-from screens.text import TextDrawer
+from .config import Config
+from .highscores import Highscores
+from .screens.constants import ESC, FPS, HEIGHT, WIDTH, WINDOW_CLOSE_EVENT
+from .screens.end_screen import EndScreen
+from .screens.game_screen import GameScreen
+from .screens.highscores_screen import HighscoresScreen
+from .screens.instructions_screen import InstructionsScreen
+from .screens.main_menu import MainMenu
+from .screens.mlx_class import MlxClass
+from .screens.pause_screen import PauseScreen
+from .screens.text import TextDrawer
 
 frame_duration = 1.0 / FPS
 last_time = time.perf_counter()
@@ -200,16 +200,16 @@ def on_close(param: Any) -> None:
     mlx_class.mlx.mlx_loop_exit(mlx_class.mlx_ptr)
 
 
-def main(argv: list[str]) -> int:
+def main(argv: str) -> int:
     """Load the config, open the window and run the game loop."""
     global config, highscores, mlx_class, text, menu
     global pause_screen, end_screen, highscores_screen, instructions_screen
 
-    if len(argv) != 1:
-        print("Usage: python3 pac-man.py <config.json>")
-        return 1
+    # if len(argv) != 1:
+    #     print("Usage: python3 pac-man.py <config.json>")
+    #     return 1
     try:
-        config = Config.start(argv[0])
+        config = Config.start(argv)
         highscores = Highscores(config.highscore_filename)
         window = MlxClass("Pac-Man", WIDTH, HEIGHT)
         mlx_class = window

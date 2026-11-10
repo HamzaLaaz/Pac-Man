@@ -2,7 +2,7 @@ import time
 from typing import Any
 from bdfparser import Font
 from mazegenerator.mazegenerator import MazeGenerator
-from config import Config
+from src.config import Config
 from .constants import (
     E, GAME_SCREEN_Y_MARGIN, N, PACMAN_SPEED, PATH_COLOR, S, W, WALL_COLOR,
 )
@@ -76,6 +76,7 @@ class GameScreen:
         self.build_maze_image()
         # pacman
         self.pacman = Pacman(self.mlx_class, self)
+        self.hearts_holder =  None
         # lives are kept between levels
         self.pacman.lives = self.max_lives if lives is None else lives
         self.heart_slots = max(self.max_lives, self.pacman.lives)
@@ -191,19 +192,26 @@ class GameScreen:
     def draw_hearts(self) -> None:
         x = 0
         y = 0
-
-        # heart_slots only grows, so hearts from extra lives get cleared
-        self.heart_slots = max(self.heart_slots, self.pacman.lives)
-        for i in range(self.heart_slots):
-            if i < self.pacman.lives:
-                img, w, h = self.heart
-            else:
-                img, w, h = self.heart_clear
-
+        if self.hearts_holder != self.pacman.lives or self.hearts_holder == None:
+            img, w, h = self.heart_clear
+            self.mlx.mlx_put_image_to_window(
+                self.mlx_ptr, self.mlx_win, img, x, y
+            )
+            # heart_slots only grows, so hearts from extra lives get cleared
+            img, w, h = self.heart
             self.mlx.mlx_put_image_to_window(
                 self.mlx_ptr, self.mlx_win, img, x, y
             )
             x += w + 10
+            self.text.draw(f"X{self.pacman.lives}", x, y, 3)
+            self.hearts_holder == self.pacman.lives
+        else:
+            img, w, h = self.heart
+            self.mlx.mlx_put_image_to_window(
+                self.mlx_ptr, self.mlx_win, img, x, y
+            )
+            x += w + 10
+            self.text.draw(f"X{self.pacman.lives}", x, y, 3)
 
     def draw_level(self) -> None:
         """Draw 'Level N' in the HUD."""

@@ -1,5 +1,5 @@
 """Game over / victory screen with name entry for the highscores."""
-from highscores import Highscores
+from src.highscores import Highscores
 
 from .constants import (ESC, KEY_BACKSPACE, KEY_ENTER, KEY_KP_ENTER,
                         TEXT_YELLOW)

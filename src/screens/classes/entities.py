@@ -1,10 +1,10 @@
 import time
 from typing import Any, TYPE_CHECKING
-from screens.constants import (
+from src.screens.constants import (
     GHOST_RESPAWN_DELAY, GHOST_SPEED, PACMAN_FRAME_TIMER, PACMAN_SPEED,
     POWER_UP_DURATION,
 )
-from screens.mlx_class import MlxClass
+from src.screens.mlx_class import MlxClass
 
 if TYPE_CHECKING:
     from screens.game_screen import GameScreen

@@ -1,5 +1,5 @@
 """Screen that shows the top 10 highscores."""
-from highscores import Highscores
+from src.highscores import Highscores
 
 from .constants import ESC, KEY_ENTER, KEY_KP_ENTER, TEXT_YELLOW
 from .mlx_class import MlxClass

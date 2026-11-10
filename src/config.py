@@ -209,9 +209,9 @@ class Config:
                       "using default level dimensions.")
                 lvl = {}
 
-            w = cls._clamp(lvl.get("width", 15), min_val=14, max_val=29,
+            w = cls._clamp(lvl.get("width", 15), min_val=14, max_val=50,
                            default_val=15, name=f"levels[{i}].width")
-            h = cls._clamp(lvl.get("height", 15), min_val=14, max_val=29,
+            h = cls._clamp(lvl.get("height", 15), min_val=14, max_val=50,
                            default_val=15, name=f"levels[{i}].height")
             cleaned_levels.append({"width": w, "height": h})
 
