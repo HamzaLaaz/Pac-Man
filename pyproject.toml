@@ -8,6 +8,8 @@ dependencies = [
     "bdfparser>=2.2.0",
     "mazegenerator",
     "mlx",
+    "nuitka>=4.3.5",
+    "patchelf>=0.19.3.0",
     "pytest>=9.1.1",
 ]
 
