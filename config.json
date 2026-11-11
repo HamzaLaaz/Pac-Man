@@ -8,7 +8,7 @@
 	"highscore_filename": "highscores.json",
 
 	"game_settings": {
-		# Time limit for each level, in seconds (1 to 3600)
+		# Time limit for each level, in seconds (60 to 3600)
 		"level_max_time": 90,
 
 		# Seed used to generate the first maze (integer >= 0)
@@ -16,7 +16,7 @@
 		"seed": 42,
 
 		# One entry per level, in order (at least 10 levels).
-		# width and height are the maze size (5 to 29)
+		# width and height are the maze size (14 to 30)
 		"levels": [
 			{"width": 15, "height": 15},
 			{"width": 15, "height": 15},
