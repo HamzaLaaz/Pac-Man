@@ -49,7 +49,7 @@ exactly one argument (the path to a JSON config file), as specified by
 the subject:
 
 ```sh
-python3 pac-man.py src/config.json
+python3 pac-man.py config.json
 ```
 
 Any problem with the config file (missing file, invalid JSON, bad values)
@@ -92,7 +92,7 @@ is reported as a clear warning on stdout and falls back to safe defaults
 
 ### AI usage
 
-AI assistance (Claude Code) was used **only** to bring the project into
+AI assistance was used **only** to bring the project into
 compliance with the lint requirements of this subject: fixing `flake8`
 violations and adding the type annotations needed to satisfy `mypy`
 (both the mandatory flags and `--strict`) across the existing codebase,
@@ -104,7 +104,7 @@ project was written by hand by wkerdad and hlaaz.
 ## Configuration
 
 The game is configured through a single JSON file, passed as the only
-command-line argument (see `src/config.json` for the default). In
+command-line argument (see `config.json` for the default). In
 addition to standard JSON, the parser (`src/config.py`) also accepts
 comments: lines starting with `#` or `//`, and `/* ... */` blocks, are
 stripped before parsing — comments inside quoted strings are left alone.
@@ -120,7 +120,7 @@ Structure (all keys optional — missing ones fall back to defaults):
 | `highscore_filename` | File the highscore table is saved to. | `highscores.json` |
 | `game_settings.level_max_time` | Seconds allowed per level (60–3600). | `90` |
 | `game_settings.seed` | Seed for level 1's maze (integer ≥ 0). | `42` |
-| `game_settings.levels` | Array of `{width, height}` per level (14–29 each). At least 10 levels; missing ones are padded with sensible defaults. | 10 levels, 15×15 up to 25×25 |
+| `game_settings.levels` | Array of `{width, height}` per level (14–30 each). At least 10 levels; missing ones are padded with sensible defaults. | 10 levels, 15×15 up to 25×25 |
 | `player.lives` | Starting lives (1–99). | `3` |
 | `score.pacgum` | Points per pacgum eaten. | `10` |
 | `score.super_pacgum` | Points per super-pacgum eaten. | `50` |
@@ -172,7 +172,7 @@ local wheel in `mazegenerator/` and declared as a dependency in
   are all wrapped so that a failure is reported with a clear message and
   the game degrades gracefully (falls back to defaults, skips the level,
   etc.) instead of crashing.
-- **Game loop**: a single MLX loop hook in `src/main.py` drives a small
+- **Game loop**: a single MLX loop hook in `src/start.py` drives a small
   state machine (`menu`, `game`, `pause`, `end`, `highscores`,
   `instructions`) and dispatches rendering/input to the screen that is
   currently active.
@@ -182,7 +182,7 @@ local wheel in `mazegenerator/` and declared as a dependency in
 ```
 pac-man.py                   # root entry point (python3 pac-man.py config.json)
 src/
-├── main.py                 # game-state machine, MLX hooks
+├── start.py                 # game-state machine, MLX hooks
 ├── config.py                # JSON+comments config parsing & validation
 ├── highscores.py             # persistent top-10 highscore table
 └── screens/
