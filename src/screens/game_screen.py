@@ -76,7 +76,7 @@ class GameScreen:
         self.build_maze_image()
         # pacman
         self.pacman = Pacman(self.mlx_class, self)
-        self.hearts_holder =  None
+        self.hearts_holder = None
         # lives are kept between levels
         self.pacman.lives = self.max_lives if lives is None else lives
         self.heart_slots = max(self.max_lives, self.pacman.lives)
@@ -192,7 +192,8 @@ class GameScreen:
     def draw_hearts(self) -> None:
         x = 0
         y = 0
-        if self.hearts_holder != self.pacman.lives or self.hearts_holder == None:
+        h = self.hearts_holder
+        if h != self.pacman.lives or self.hearts_holder is None:
             img, w, h = self.heart_clear
             self.mlx.mlx_put_image_to_window(
                 self.mlx_ptr, self.mlx_win, img, x, y

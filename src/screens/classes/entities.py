@@ -7,8 +7,8 @@ from src.screens.constants import (
 from src.screens.mlx_class import MlxClass
 
 if TYPE_CHECKING:
-    from screens.game_screen import GameScreen
-    from screens.ghost_ai import GhostAI
+    from src.screens.game_screen import GameScreen
+    from src.screens.ghost_ai import GhostAI
 
 
 class Pacman:
