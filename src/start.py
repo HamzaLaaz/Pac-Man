@@ -205,9 +205,6 @@ def main(argv: str) -> int:
     global config, highscores, mlx_class, text, menu
     global pause_screen, end_screen, highscores_screen, instructions_screen
 
-    # if len(argv) != 1:
-    #     print("Usage: python3 pac-man.py <config.json>")
-    #     return 1
     try:
         config = Config.start(argv)
         highscores = Highscores(config.highscore_filename)
