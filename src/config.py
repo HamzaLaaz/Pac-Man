@@ -5,6 +5,8 @@ from typing import Any
 DEFAULT_SIZES = [15, 17, 17, 19, 19, 21, 21, 23, 25, 28]
 MIN_LEVELS = 10
 
+class NameFileError(Exception):
+    pass
 
 @dataclass
 class LevelConfig:
@@ -130,33 +132,38 @@ class Config:
     @classmethod
     def _validate_highscore(cls, data: dict[str, Any]) -> None:
         val = data.get("highscore_filename")
-        if val is not None and (not isinstance(val, str) or len(val) == 0):
-            print(f"Warning: config 'highscore_filename' = {val} "
-                  "is invalid, using default.")
+        if isinstance(val, str) and val.lower().endswith(".json"):
+            return
+        else:
+            print(f"Warning: config 'highscore_filename' "
+                  "is invalid or not found, using default.")
             data.pop("highscore_filename", None)
+
 
     @classmethod
     def _validate_player(cls, data: dict[str, Any]) -> None:
         player = data.get("player")
-        if not isinstance(player, dict):
-            if player is not None:
-                print("Warning: config 'player' section is "
-                      "invalid, using default.")
+        if isinstance(player, dict):
+            if "lives" in player:
+                player["lives"] = cls._clamp(
+                    player["lives"],
+                    min_val=1, max_val=99, default_val=3, name="player.lives")
+            else:
+                print("Warning: config 'player.lives' section is "
+                      "invalid or not found, using default.")
+        else:
+            print("Warning: config 'player' section is "
+                  "invalid or not found, using default.")
             data["player"] = {}
             return
 
-        if "lives" in player:
-            player["lives"] = cls._clamp(
-                player["lives"],
-                min_val=1, max_val=99, default_val=3, name="player.lives")
 
     @classmethod
     def _validate_score(cls, data: dict[str, Any]) -> None:
         score = data.get("score")
-        if not isinstance(score, dict):
-            if score is not None:
-                print("Warning: config 'score' section is "
-                      "invalid, using default.")
+        if score is None or not isinstance(score, dict):
+            print("Warning: config 'score' section is "
+                  "invalid or not found, using default.")
             data["score"] = {}
             return
 
@@ -168,14 +175,16 @@ class Config:
             if key in score:
                 score[key] = cls._clamp(score[key], min_val,
                                         max_val, default_val, f"score.{key}")
+            else:
+                print(f"Warning: config 'score.{key}' secyion is "
+                      "not found, using default.")
 
     @classmethod
     def _validate_game_settings(cls, data: dict[str, Any]) -> None:
         settings = data.get("game_settings")
-        if not isinstance(settings, dict):
-            if settings is not None:
-                print("Warning: config 'game_settings' section "
-                      "is invalid, using default.")
+        if settings is None or not isinstance(settings, dict):
+            print("Warning: config 'game_settings' section "
+                  "is invalid or not found, using default.")
             settings = {}
             data["game_settings"] = settings
 
@@ -184,6 +193,9 @@ class Config:
                 settings["level_max_time"], min_val=60, max_val=3600,
                 default_val=90, name="game_settings.level_max_time"
             )
+        else:
+            print(f"Warning: config 'game_settings.level_max_time' secyion is "
+                  "not found, using default.")
 
         if "seed" in settings:
             seed_val = settings["seed"]
@@ -192,13 +204,15 @@ class Config:
                 print(f"Warning: config 'game_settings.seed' = {seed_val} "
                       "is invalid, using default 42.")
                 settings["seed"] = 42
+        else:
+            print(f"Warning: config 'game_settings.seed' secyion is "
+                  "not found, using default.")
 
         # Validate and pad levels array
         raw_levels = settings.get("levels")
-        if not isinstance(raw_levels, list):
-            if raw_levels is not None:
-                print("Warning: config 'game_settings.levels' is invalid, "
-                      "resetting levels list.")
+        if raw_levels is None or not isinstance(raw_levels, list):
+            print("Warning: config 'game_settings.levels' is invalid or "
+                  "not found, resetting levels list.")
             raw_levels = []
             settings["levels"] = raw_levels
 
@@ -226,22 +240,37 @@ class Config:
 
         settings["levels"] = cleaned_levels
 
-    @classmethod
-    def read_file(cls, filename: str) -> dict[str, Any]:
-        """Return the file content as a dict, or {} if it cannot be used."""
+
+    @staticmethod
+    def read_file(filename: str) -> dict[str, Any]:
+        """Read a JSON configuration file, or return {} if invalid."""
         try:
+            if not filename.lower().endswith(".json"):
+                raise NameFileError(
+                    "Configuration filename must end with '.json'.")
             with open(filename, "r", encoding="utf-8") as file:
-                clean_json = cls.remove_comments(file.read())
+                clean_json = Config.remove_comments(file.read())
                 data = json.loads(clean_json)
-                if isinstance(data, dict):
-                    return data
-                print("Warning: config root must be a JSON object.")
-        except OSError as error:
-            print(f"Warning: Cannot read '{filename}': {error}")
+            if isinstance(data, dict):
+                return data
+            print("Warning: Invalid configuration format. "
+                  "The JSON root must be an object (dictionary).")
+        except FileNotFoundError:
+            print(f"Warning: Configuration file '{filename}' was not found. "
+                  "Using default settings.")
+        except PermissionError:
+            print(f"Warning: Permission denied when reading '{filename}'. "
+                  "Using default settings.")
         except json.JSONDecodeError as error:
-            print(f"Warning: Invalid JSON in '{filename}' "
-                  f"(line {error.lineno})")
+            print(f"Warning: Invalid JSON in '{filename}' at line "
+                  f"{error.lineno}: {error.msg}. Using default settings.")
+        except NameFileError as error:
+            print(f"Warning: {error} Using default settings.")
+        except OSError as error:
+            print(f"Warning: Failed to read configuration file '{filename}':"
+                  f" {error}. Using default settings.")
         return {}
+
 
     @staticmethod
     def remove_comments(data: str) -> str:
